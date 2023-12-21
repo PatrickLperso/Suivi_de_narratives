@@ -2,7 +2,7 @@
 ## Ceci est le repos du projet de WebScrapping 
 
 
-###liste des fichiers
+### Liste des fichiers
 
 20231212.export.CSV contient le fichier 2023 de GDELT 1.0, il a été utilisé pour construire un BDD de médias (code dans get_url_list.py)
 
