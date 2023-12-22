@@ -25,8 +25,8 @@ async def parser_robots(session, url):
     try:
         async with session.get(url) as response:
             html = await response.text()
-            all_links=list(map(lambda x:"".join(x),
-                         re.findall(r"(http|ftp|https)(:\/\/[\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])", html)))
+            all_links=list(filter(lambda x: "climat" in x.lower(), list(map(lambda x:"".join(x),
+                        re.findall(r"(http|ftp|https)(:\/\/[\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])", requesting.text)))))
             if len(all_links)==0:
                 all_links=None
 
