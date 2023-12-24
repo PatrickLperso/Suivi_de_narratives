@@ -18,6 +18,16 @@ medias_per_countries.csv contient les données scrappées de https://www.abyznew
 
 url_500_11.json contient les robots.txt, et sitemap.xml des données GDELT
 
+### venv pour crawling_async.py
+
+Créer un venv, activation , et installation des paquets pip
+```bash 
+python3 -m venv venv
+source env/bin/activate
+pip install -r requirements_async_crawl.txt
+```
+
+
 ### BDD MongoDB 
 
 Pour récupérer et lancer une instance docker. Lancez la commande suivante (elle est amenée à changer ), parce qu'il n'y a pas 
