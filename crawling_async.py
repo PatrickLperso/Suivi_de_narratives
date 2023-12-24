@@ -16,7 +16,10 @@ from bs4 import BeautifulSoup
 import re
 import aiohttp
 import json
+from pprint import pprint
 from tqdm.asyncio import tqdm_asyncio
+from pymongo import MongoClient
+
 
 """
 Json thought structure / ¨Potentiellement utiliser du MongoDB
@@ -43,13 +46,121 @@ Json thought structure / ¨Potentiellement utiliser du MongoDB
 }
 """
 
+
+
+class MongoDB_scrap():
+    #docker run -d -p 27017:27017 --name m1 mongo
+    #source env/bin/activate
+
+    def __init__(self, port_forwarding=27017):
+        self.client=MongoClient('localhost', port=port_forwarding)
+        self.ping_MongoDB()
+        self.show_all("scrapping", "urls_sitemap_html")
+        
+        #self.insert_data("scrapping", "urls_sitemap_html", MongoDB_scrap.create_dictio_data_from_csv("medias_per_countries.csv"))
+        
+
+    def ping_MongoDB(self):
+        try:
+            self.client.admin.command('ping')
+            print("Pinged your deployment. You successfully connected to MongoDB!")
+        except Exception as e:
+            print(e)
+    
+    def test_database_exists(self, database_name, print_arg=False):
+        dblist = self.client.list_database_names()
+        if database_name in dblist:
+            if print_arg:
+                print("\nThe database : <<{}>> exists.".format(database_name))
+        else:
+            if print_arg:
+                print("\nThe database : <<{}>> doesn't exists.".format(database_name))
+        return database_name in dblist
+    
+    def test_collection_in_database_exists(self, database_name, collection_name, print_arg=False): 
+        if self.test_database_exists(database_name, print_arg):
+            col_list = self.client[database_name].list_collection_names()
+            if (collection_name in col_list):
+                if print_arg :
+                    print("The collection : <<{}>> in the database : <<{}>> exists.".format(collection_name, database_name))
+            else:
+                if print_arg :
+                    print("The collection : <<{}>> in the database : <<{}>> doesn't exist.".format(collection_name, database_name))
+            return collection_name in col_list
+        else:
+            return False
+    
+    def insert_data(self, mydatabase, collection_name, data):
+        collection_mongo = self.client[mydatabase][collection_name]
+        x = collection_mongo.insert_many(data)
+    
+    def create_dictio_data_from_csv(path):
+        df_urls=pd.read_csv(path).replace(np.NaN, None)
+        df_urls=df_urls.loc[df_urls.loc[:, "true_country"]=="United Kingdom", :]
+
+        list_dictios=list(df_urls.apply(lambda row:
+                                    {
+                                    "url":row["url"],
+                                    "media_name":row["media_name"], 
+                                    "media_coverage": row["media_coverage"],
+                                    "media_subject":row["media_subject"],
+                                    "media_language":row["media_language"],
+                                    "media_location":row["media_location"],
+                                    "coverage":row["coverage"],
+                                    "true_country":row["true_country"],
+                                    "sitemaps_xml": [],
+                                    "html_urls": [],
+                                    "robots_txt_parsed" :  None,
+                                    "last_time_scrapped" : None,
+                                    "is_responding" : None,
+                                    "nb_not_responding" : 0,
+                                    },
+                                    axis=1))
+        return list_dictios
+
+    def show_all(self, database_name, collection_name, max_items=5):
+        if self.test_collection_in_database_exists(database_name, collection_name, print_arg=True):
+            request=self.client[database_name][collection_name].find({})
+            for index, document in enumerate(request):
+                if index<max_items:
+                    pprint(document)
+                else:
+                    break
+
+
+
 class Crawler_parrelel():
     def __init__(self):
         pass
     
-    def open_media(self, path):
-        self.df_urls=pd.read_csv(path)
+    def init_MongoDB(self, path):
+        self.df_urls=pd.read_csv(path).replace(np.NaN, None)
+        self.dictio={}
 
+        self.df_urls=self.df_urls.loc[self.df_urls.loc[:, "true_country"]=="United Kingdom", :]
+
+        self.dictio=list(self.df_urls.apply(lambda row:
+                                    {
+                                    "url":row["url"],
+                                    "media_name":row["media_name"], 
+                                    "media_coverage": row["media_coverage"],
+                                    "media_subject":row["media_subject"],
+                                    "media_language":row["media_language"],
+                                    "media_location":row["media_location"],
+                                    "coverage":row["coverage"],
+                                    "true_country":row["true_country"],
+                                    "sitemaps_xml": [],
+                                    "html_urls": [],
+                                    "robots_txt_parsed" :  None,
+                                    "last_time_scrapped" : None,
+                                    "is_responding" : None,
+                                    "nb_not_responding" : 0,
+                                    },
+                                    axis=1))
+        
+        self.dictio_test=self.dictio[:20]
+        
+        
     async def parser_robots(session, urls):
         try:
             async with session.get(urls[1]) as response:
@@ -127,11 +238,11 @@ class Crawler_parrelel():
         stop = perf_counter()
 
 
+#print(np.array([1,2]))
+
+
 if __name__=="__main__":
-    crawler=Crawler_parrelel()
-    breakpoint()
-    crawler.open_media("medias_per_countries.csv")
-    breakpoint()
+    instance_Mongo=MongoDB_scrap(port_forwarding=27017)
 
 
 
