@@ -42,3 +42,5 @@ Pour voir les conteneurs en cours d'éxecution:
 docker ps
 ```
 
+Le script crawling_async.py va automatiquement insérer les médias anglais dans la BDD MongoDB dans le conteneur, s'il n'y a pas de données
+
