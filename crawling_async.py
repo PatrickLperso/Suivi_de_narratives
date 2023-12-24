@@ -46,19 +46,17 @@ Json thought structure / ¨Potentiellement utiliser du MongoDB
 }
 """
 
-
-
 class MongoDB_scrap():
-    #docker run -d -p 27017:27017 --name m1 mongo
-    #source env/bin/activate
 
     def __init__(self, port_forwarding=27017):
         self.client=MongoClient('localhost', port=port_forwarding)
         self.ping_MongoDB()
         self.show_all("scrapping", "urls_sitemap_html")
         
-        #self.insert_data("scrapping", "urls_sitemap_html", MongoDB_scrap.create_dictio_data_from_csv("medias_per_countries.csv"))
+        if not self.test_collection_in_database_exists( "scrapping", "urls_sitemap_html", print_arg=True):
+            self.insert_data("scrapping", "urls_sitemap_html", MongoDB_scrap.create_dictio_data_from_csv("medias_per_countries.csv"))
         
+        self.show_all("scrapping", "urls_sitemap_html")
 
     def ping_MongoDB(self):
         try:
