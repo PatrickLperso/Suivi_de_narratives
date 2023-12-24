@@ -53,7 +53,7 @@ class MongoDB_scrap():
         self.ping_MongoDB()
         self.show_all("scrapping", "urls_sitemap_html")
         
-        if not self.test_collection_in_database_exists( "scrapping", "urls_sitemap_html", print_arg=True):
+        if self.test_collection_in_database_exists("scrapping", "urls_sitemap_html", print_arg=False):
             self.insert_data("scrapping", "urls_sitemap_html", MongoDB_scrap.create_dictio_data_from_csv("medias_per_countries.csv"))
         
         self.show_all("scrapping", "urls_sitemap_html")
@@ -94,10 +94,11 @@ class MongoDB_scrap():
     
     def create_dictio_data_from_csv(path):
         df_urls=pd.read_csv(path).replace(np.NaN, None)
-        df_urls=df_urls.loc[df_urls.loc[:, "true_country"]=="United Kingdom", :]
+        #df_urls=df_urls.loc[df_urls.loc[:, "true_country"]=="United Kingdom", :]
 
         list_dictios=list(df_urls.apply(lambda row:
                                     {
+                                    "_id": row["id"],
                                     "url":row["url"],
                                     "media_name":row["media_name"], 
                                     "media_coverage": row["media_coverage"],
@@ -112,6 +113,10 @@ class MongoDB_scrap():
                                     "last_time_scrapped" : None,
                                     "is_responding" : None,
                                     "nb_not_responding" : 0,
+                                    "url_robots.txt":"{}robots.txt".format('{}://{}/'.format(urllib.parse.urlparse(row["url"]).scheme,
+                                                                                             urllib.parse.urlparse(row["url"]).netloc )),
+                                    "url_root":'{}://{}/'.format(urllib.parse.urlparse(row["url"]).scheme,
+                                                                urllib.parse.urlparse(row["url"]).netloc )
                                     },
                                     axis=1))
         return list_dictios
@@ -119,6 +124,7 @@ class MongoDB_scrap():
     def show_all(self, database_name, collection_name, max_items=5):
         if self.test_collection_in_database_exists(database_name, collection_name, print_arg=True):
             request=self.client[database_name][collection_name].find({})
+            print("Nombre d'éléments : {}".format(self.client[database_name][collection_name].count_documents({})))
             for index, document in enumerate(request):
                 if index<max_items:
                     pprint(document)
