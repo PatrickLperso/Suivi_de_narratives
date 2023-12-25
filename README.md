@@ -33,13 +33,18 @@ pip install -r requirements_async_crawl.txt
 Pour récupérer et lancer une instance docker. Lancez la commande suivante (elle est amenée à changer ), parce qu'il n'y a pas 
 pour l'instant de presistance locale des données à l'aide d'un volume docker 
 ```bash
-docker run -d -p 27017:27017 --name m1 mongo
+docker run -d -p 27017:27017 --name Mongodb_scrapping mongo:latest
 ```
 Cette commande lance une image mongo en mode détache (-d) avec un forwarding du port 27017 sur le locahost (-p 27017:27017)
+Le conteneur porte un nom en l'occurence Mongodb_scrapping
 
 Pour voir les conteneurs en cours d'éxecution:
 ```bash 
 docker ps
+```
+Pour arrêter et supprimer le conteneur Mongodb_scrapping en cours d'éxecution
+```bash
+docker ps | grep Mongodb_scrapping | awk '{print $1}' | xargs docker stop | xargs docker rm
 ```
 
 Le script crawling_async.py va automatiquement insérer les médias anglais dans la BDD MongoDB dans le conteneur, s'il n'y a pas de données

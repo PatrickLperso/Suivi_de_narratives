@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 import re
 import aiohttp
 import json
-from pprint import pprint
+from pprint import pprint, pformat
 from tqdm.asyncio import tqdm_asyncio
 from pymongo import MongoClient
 
@@ -46,17 +46,52 @@ Json thought structure / ¨Potentiellement utiliser du MongoDB
 }
 """
 
-class MongoDB_scrap():
+class MongoDB_scrap_async():
 
-    def __init__(self, port_forwarding=27017):
+    def __init__(self, port_forwarding=27017, test=True):
         self.client=MongoClient('localhost', port=port_forwarding)
         self.ping_MongoDB()
         self.show_all("scrapping", "urls_sitemap_html")
         
-        if self.test_collection_in_database_exists("scrapping", "urls_sitemap_html", print_arg=False):
-            self.insert_data("scrapping", "urls_sitemap_html", MongoDB_scrap.create_dictio_data_from_csv("medias_per_countries.csv"))
+        if not self.test_collection_in_database_exists("scrapping", "urls_sitemap_html", print_arg=False):
+            self.insert_data("scrapping", "urls_sitemap_html", 
+                             MongoDB_scrap_async.create_dictio_data_from_csv("medias_per_countries.csv", test=test))
         
         self.show_all("scrapping", "urls_sitemap_html")
+    
+    def __str__(self):
+        databases=[dict(db) for db in self.client.list_databases()]
+        
+        for index, database in enumerate(databases):
+            if database["name"] not in ["admin", "config", "local"]:
+                databases[index]["collections"]=self.client[database["name"]].list_collection_names()
+                
+                liste=[(database["name"], collection_name) for collection_name in databases[index]["collections"]]
+                    
+                dicionnaire_inter=dict(zip(databases[index]["collections"], 
+                                                        [self.show_all(database["name"], collection_name, max_items=2) for collection_name in databases[index]["collections"]])
+                                                    )
+                databases[index]["collections"]=dicionnaire_inter
+            
+        
+        return str(databases)
+    
+    def __repr__(self):
+        databases=[dict(db) for db in self.client.list_databases()]
+        
+        for index, database in enumerate(databases):
+            if database["name"] not in ["admin", "config", "local"]:
+                databases[index]["collections"]=self.client[database["name"]].list_collection_names()
+                
+                liste=[(database["name"], collection_name) for collection_name in databases[index]["collections"]]
+                    
+                dicionnaire_inter=dict(zip(databases[index]["collections"], 
+                                                        [self.show_all(database["name"], collection_name, max_items=2) for collection_name in databases[index]["collections"]])
+                                                    )
+                databases[index]["collections"]=dicionnaire_inter
+        
+        return pformat(databases, indent=4, width=1)
+
 
     def ping_MongoDB(self):
         try:
@@ -92,9 +127,10 @@ class MongoDB_scrap():
         collection_mongo = self.client[mydatabase][collection_name]
         x = collection_mongo.insert_many(data)
     
-    def create_dictio_data_from_csv(path):
+    def create_dictio_data_from_csv(path, test=False):
         df_urls=pd.read_csv(path).replace(np.NaN, None)
-        #df_urls=df_urls.loc[df_urls.loc[:, "true_country"]=="United Kingdom", :]
+        if test:
+            df_urls=df_urls.loc[df_urls.loc[:, "true_country"]=="United Kingdom", :].iloc[:30]
 
         list_dictios=list(df_urls.apply(lambda row:
                                     {
@@ -120,51 +156,27 @@ class MongoDB_scrap():
                                     },
                                     axis=1))
         return list_dictios
+    
 
-    def show_all(self, database_name, collection_name, max_items=5):
+
+    def show_all(self, database_name, collection_name, max_items=2):
         if self.test_collection_in_database_exists(database_name, collection_name, print_arg=True):
-            request=self.client[database_name][collection_name].find({})
+            cursor=self.client[database_name][collection_name].find({}).limit(max_items)
             print("Nombre d'éléments : {}".format(self.client[database_name][collection_name].count_documents({})))
-            for index, document in enumerate(request):
+            
+
+            liste_result  = []
+            for resulsts in cursor:
+                liste_result.append(resulsts)
+                        
+            for index, document in enumerate(cursor):
                 if index<max_items:
                     pprint(document)
                 else:
                     break
-
-
-
-class Crawler_parrelel():
-    def __init__(self):
-        pass
+            return liste_result
+        return None 
     
-    def init_MongoDB(self, path):
-        self.df_urls=pd.read_csv(path).replace(np.NaN, None)
-        self.dictio={}
-
-        self.df_urls=self.df_urls.loc[self.df_urls.loc[:, "true_country"]=="United Kingdom", :]
-
-        self.dictio=list(self.df_urls.apply(lambda row:
-                                    {
-                                    "url":row["url"],
-                                    "media_name":row["media_name"], 
-                                    "media_coverage": row["media_coverage"],
-                                    "media_subject":row["media_subject"],
-                                    "media_language":row["media_language"],
-                                    "media_location":row["media_location"],
-                                    "coverage":row["coverage"],
-                                    "true_country":row["true_country"],
-                                    "sitemaps_xml": [],
-                                    "html_urls": [],
-                                    "robots_txt_parsed" :  None,
-                                    "last_time_scrapped" : None,
-                                    "is_responding" : None,
-                                    "nb_not_responding" : 0,
-                                    },
-                                    axis=1))
-        
-        self.dictio_test=self.dictio[:20]
-        
-        
     async def parser_robots(session, urls):
         try:
             async with session.get(urls[1]) as response:
@@ -186,39 +198,19 @@ class Crawler_parrelel():
         if timeout_total:
             timeout = aiohttp.ClientTimeout(total=timeout_total)
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                results = await Crawler_parrelel.fetch_all(session, url_series, fonction)
+                results = await MongoDB_scrap_async.fetch_all(session, url_series, fonction)
             await session.close()
             await asyncio.sleep(0.25)
         else:
             async with aiohttp.ClientSession() as session:
-                results = await Crawler_parrelel.fetch_all(session, url_series, fonction)
+                results = await MongoDB_scrap_async.fetch_all(session, url_series, fonction)
             await session.close()
             await asyncio.sleep(0.25)
 
         return results
 
-
-    def url_parser(url):
-        uri_objet=urllib.parse.urlparse(url)
-        uri_schem=uri_objet.scheme
-        uri_netloc=uri_objet.netloc
-        url='{}://{}/'.format(uri_objet.scheme,uri_objet.netloc )
-        url_robot="{}robots.txt".format(url)
-        return pd.Series({"uri_objet":uri_objet, "uri_schem":uri_schem, "uri_netloc":uri_netloc, "url":url, "url_robot":url_robot})
-
-    def ensure_folder(name_folder):
-        while os.path.exists(name_folder):
-            path=input('Le dossier : {} existe (entrée pour écraser/sinon taper nom) : '.format(name_folder))
-            if path=="":
-                break
-            else:
-                name_folder=path
-        if not os.path.exists(name_folder):
-            os.mkdir(name_folder)
-        return name_folder
-
     def scan_url(name_folder, liste_url, fonction, timeout_total, n=500):
-        Crawler_parrelel.ensure_folder(name_folder)
+        MongoDB_scrap_async.ensure_folder(name_folder)
 
         start = perf_counter()
         if sys.platform == 'win32':
@@ -230,7 +222,7 @@ class Crawler_parrelel():
         dictio_url={}
         for index, k in enumerate(split_url):
             
-            liste_results=asyncio.get_event_loop().run_until_complete(Crawler_parrelel.main(k,fonction, timeout_total))
+            liste_results=asyncio.get_event_loop().run_until_complete(MongoDB_scrap_async.main(k,fonction, timeout_total))
             dictio_url.update(dict(zip(list(map(lambda x:list(x.keys())[0], liste_results)), list(map(lambda x:list(x.values())[0], liste_results)))))
 
             json_object = json.dumps(dictio_url, indent=4)
@@ -242,11 +234,8 @@ class Crawler_parrelel():
         stop = perf_counter()
 
 
-#print(np.array([1,2]))
-
-
 if __name__=="__main__":
-    instance_Mongo=MongoDB_scrap(port_forwarding=27017)
-
+    instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
+    pprint(instance_Mongo)
 
 
