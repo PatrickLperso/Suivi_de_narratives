@@ -47,5 +47,19 @@ Pour arrêter et supprimer le conteneur Mongodb_scrapping en cours d'éxecution
 docker ps | grep Mongodb_scrapping | awk '{print $1}' | xargs docker stop | xargs docker rm
 ```
 
+### Executer code
+Si le docker Mongo a été lancée corrrecement et que les installations ont été faites dans le venv
+Il n'y a plus qu'à lancer l'importation des données dans la BDD MongoDB pour l'instant que 30 items
+Pour tout importer mettre test=False dans le code suivant 
+```python
+if __name__=="__main__":
+    instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
+    pprint(instance_Mongo)
+```
+
+Lancement du script
+```bash
+python crawling_async.py
+```
 Le script crawling_async.py va automatiquement insérer les médias anglais dans la BDD MongoDB dans le conteneur, s'il n'y a pas de données
 
