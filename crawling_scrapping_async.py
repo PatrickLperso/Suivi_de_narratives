@@ -20,7 +20,7 @@ from tqdm.asyncio import tqdm_asyncio
 
 
 
-
+"""
 async def parser_robots(session, url):
     try:
         async with session.get(url) as response:
@@ -47,7 +47,29 @@ async def parser_robots(session, url):
     except:
         return {url.replace("/robots.txt", ""): 
                     {"robots":None, "all_links":None, "xml_filter":None,"news_filter": None, "index_filter": None}}
+"""
+async def parser_robots(session, url):
+    res={"User-Agent":[], "Sitemap": []}
+    try:
+        async with session.get(url) as response:
+            text_split = await response.text()
+            for k in text_split.splitlines():
+                if len(k)!=0 and k[0]!="#": # on évite les lignes commentées ou vides
+                    if "user-agent:" in k.lower():
+                        key=k.split(":", 1)[1].strip(' ')  # la clé va passer de user-agent en user-agent 
+                    
+                    elif "disallow" in k.lower() and key=="*": #tant que la clé vaut * on ajoute
+                        res["User-Agent"]["Disallow"].append(k.split(":",1)[1].strip(' '))
+                    elif "allow" in k.lower() and key=="*": #tant que la clé vaut * on ajoute
+                        res["User-Agent"]["Allow"].append(k.split(":",1)[1].strip(' '))
+                    elif "sitemap" in k.lower() and "http" in k: #on prend tous les sitemaps
+                        res["Sitemap"].append(k.split(":", 1)[1].strip(' '))
+    except Exception as e:
+        res["Exception"]=str(e)
+        return {url.replace("/robots.txt", ""):  res}
     
+
+
 
 async def parser_wayback(session, urls):
     try:
@@ -140,7 +162,7 @@ def scan_url(name_folder, liste_url, fonction, timeout_total, n=500):
     dictio_url={}
     for index, k in enumerate(split_url):
         
-        liste_results=asyncio.get_event_loop().run_until_complete(main(k,fonction, timeout_total))
+        liste_results=asyncio.run(main(k,fonction, timeout_total))
         dictio_url.update(dict(zip(list(map(lambda x:list(x.keys())[0], liste_results)), list(map(lambda x:list(x.values())[0], liste_results)))))
 
         json_object = json.dumps(dictio_url, indent=4)
@@ -152,9 +174,12 @@ def scan_url(name_folder, liste_url, fonction, timeout_total, n=500):
     stop = perf_counter()
 
 df_scheme_netloc=url_to_scrap()
+"""
 top_url=df_scheme_netloc.loc[:, ["url","wayback_url"]].iloc[:100]
-liste_url=list(zip(list(top_url.loc[:, "url"]),list(top_url.loc[:, "wayback_url"] )))
+liste_url=list(zip(list(top_url.loc[:, "url"]),list(top_url.loc[:, "wayback_url"] )))"""
 
-scan_url("url_wayback", liste_url, fonction=parser_wayback,  timeout_total=None, n=10)
+liste_url=list(df_scheme_netloc.loc[:, "url_robot"].iloc[:500])
+print(liste_url)
+scan_url("url_json_text", liste_url, fonction=parser_robots,  timeout_total=25, n=100)
 
 
