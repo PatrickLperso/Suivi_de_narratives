@@ -28,11 +28,11 @@ Json thought structure / ¨Potentiellement utiliser du MongoDB
     "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
     "media_location" : ... , "coverage" : ... , "true_country" : ..., 
     "sitemaps_xml": [ 
-                        {root_xml : { "has_been_scrapped" : True , "parent_xml" : None, "depth":0}},
-                        {xml2 : { "has_been_scrapped" : True , "parent_xml" : "root_url", "depth":1}}, 
-                        {xml3 : { "has_been_scrapped" : False , "parent_xml" : "root_url", "depth":1}}, 
-                        {xml4 : { "has_been_scrapped" : True , "parent_xml" : "xml2", "depth":2}},
-                        {xml5 : { "has_been_scrapped" : False , "parent_xml" : "xml2", "depth":2}},
+                        {url:xml1,  "has_been_scrapped" : True , "parent_xml" : None, "depth":0},
+                        {url:xml2, "has_been_scrapped" : True , "parent_xml" : "root_url", "depth":1}, 
+                        {url:xml3, "has_been_scrapped" : False , "parent_xml" : "root_url", "depth":1}, 
+                        {url:xml4, "has_been_scrapped" : True , "parent_xml" : "xml2", "depth":2},
+                        {url:xml5, "has_been_scrapped" : False , "parent_xml" : "xml2", "depth":2},
                     ]
     "html_urls": [
                     {"url": url1 , "xml_source" : xml4 , "should_be_scrapped" : True, "has_been_scrapped" : True, "text" : ... }
@@ -177,7 +177,6 @@ class MongoDB_scrap_async():
                                     "html_urls": [],
                                     "last_time_scrapped" : None,
                                     "is_responding" : None,
-                                    "nb_not_responding" : 0,
                                     "user_agent_rules":None,
                                     "url_robots_txt":"{}robots.txt".format('{}://{}/'.format(urllib.parse.urlparse(row["url"]).scheme,
                                                                                              urllib.parse.urlparse(row["url"]).netloc )),
@@ -197,23 +196,89 @@ class MongoDB_scrap_async():
         return all_links
     
     async def parser_robots(session, url):
-        res={"user_agent_rules":{"Disallow":[], "Allow":[]}, "sitemaps_xml": []}
+        res={"user_agent_rules":{"Disallow":[], "Allow":[]}, "sitemaps_xml": [], "is_responding":False}
         try:
             async with session.get(url) as response:
+                res["is_responding"]=True
                 text_split = await response.text()
+                key="*" # si on tombe sur un robots.txt avec aucun user-agent au début, on considère que c'est le générique
                 for k in text_split.splitlines():
-                    if len(k)!=0 and k[0]!="#": # on évite les lignes commentées ou vides
-                        if "user-agent:" in k.lower():
-                            key=k.split(":", 1)[1].strip(' ')  # la clé va passer de user-agent en user-agent 
-                        
-                        elif "disallow" in k.lower() and key=="*": #tant que la clé vaut * on ajoute
-                            res["user_agent_rules"]["Disallow"].append(k.split(":",1)[1].strip(' '))
-                        elif "allow" in k.lower() and key=="*": #tant que la clé vaut * on ajoute
-                            res["user_agent_rules"]["Allow"].append(k.split(":",1)[1].strip(' '))
-                        elif "sitemap" in k.lower() and "http" in k: #on prend tous les sitemaps
-                            res["sitemaps_xml"].append(k.split(":", 1)[1].strip(' '))
-        except Exception as e:
-            res["Exception"]=str(e)
+                    try:
+                        if len(k)!=0 and k[0]!="#": # on évite les lignes commentées ou vides
+                            if "user-agent:" in k.lower():
+                                key=k.split(":", 1)[1].strip(' ')  # la clé va passer de user-agent en user-agent 
+                            elif "disallow" in k.lower().strip()[:8] and key=="*": # tant que la clé vaut * on ajoute
+                                res["user_agent_rules"]["Disallow"].append(k.split(":",1)[1].strip(' '))
+                            elif "allow" in k.lower().strip()[:5] and key=="*": # tant que la clé vaut * on ajoute
+                                res["user_agent_rules"]["Allow"].append(k.split(":",1)[1].strip(' '))
+                            elif "sitemap" in k.lower().strip()[:7] and "http" in k: # on prend tous les sitemaps
+                                res["sitemaps_xml"].append(
+                                                    {"url":k.split(":", 1)[1].strip(' '),  "has_been_scrapped" : False , "parent_xml" : url, "depth":0}
+                                                        )
+                    except Exception as e: 
+                        # on ne casse pas la boucle mais on enregistre l'erreur quand même pour les logs/stats
+                        # Il est possible qu'une seule ligne ait été mal renseignée
+                        res["Exception"]=str(e)
+                        res["Detail_Exception"]=repr(e)
+
+        except asyncio.TimeoutError as e:
+            res["Exception"]="asyncio.TimeoutError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientConnectionError as e:
+            res["Exception"]="aiohttp.ClientConnectionError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientOSError as e:
+            res["Exception"]="aiohttp.ClientOSError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientConnectorError as e:
+            res["Exception"]="aiohttp.ClientConnectorError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientProxyConnectionError as e:
+            res["Exception"]="aiohttp.ClientProxyConnectionError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientSSLError as e:
+            res["Exception"]="aiohttp.ClientSSLError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientConnectorSSLError as e:
+            res["Exception"]="aiohttp.ClientConnectorSSLError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientConnectorCertificateError as e:
+            res["Exception"]="aiohttp.ClientConnectorCertificateError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientResponseError as e:
+            res["Exception"]="aiohttp.ClientResponseError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientHttpProxyError as e:
+            res["Exception"]="aiohttp.ClientHttpProxyError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.WSServerHandshakeError as e:
+            res["Exception"]="aiohttp.WSServerHandshakeError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ContentTypeError as e:
+            res["Exception"]="aiohttp.ContentTypeError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.ClientPayloadError as e:
+            res["Exception"]="aiohttp.ClientPayloadError"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except aiohttp.InvalidURL as e:
+            res["Exception"]="aiohttp.InvalidURL"
+            res["Detail_Exception"]=repr(e)
+            res["is_responding"]=False
+        except Exception as e: # si jamais (très improbable)
+            res["Exception"]=repr(e)
         finally:
             return res
 
@@ -225,7 +290,11 @@ class MongoDB_scrap_async():
         res = await tqdm_asyncio.gather(*tasks)
         return res
 
-    async def main(liste_url, fonction, timeout_total):
+    async def main(liste_url, fonction, timeout_total=None):
+        """
+        Note : la fonction de parsing est un argument, elle est à construire selon le cas d'utilisation (sitemap, robots.txt, ...)
+        Cela pemet de garder le reste du code générique/ non adhérent à un cas d'utilisation
+        """
         if timeout_total:
             timeout = aiohttp.ClientTimeout(total=timeout_total)
             async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -244,39 +313,90 @@ class MongoDB_scrap_async():
         start = perf_counter()
         liste_results=asyncio.run(MongoDB_scrap_async.main(liste_url,fonction, timeout_total))
         stop = perf_counter()
-        print("\nTemps d'execution de toutes les requêtes : {}".format(stop-start))
+        print("Temps d'execution de toutes les requêtes : {}\n".format(stop-start))
         return liste_results
 
     def scan_robots_txt(self):
         # on récupère l'ensemble des documents dans la BDD MongoDB (leur id, et l'url du robots.txt)
         reponse_mongoDB=self.client["scrapping"]["urls_sitemap_html"].find({}, {"_id":1, "url_robots_txt":1})
 
+        # on récupère la liste des url et des ids mongodb
         liste_result=list(reponse_mongoDB)
+        liste_url=list(map(lambda x:x["url_robots_txt"], liste_result))
+        liste_id=list(map(lambda x:x["_id"], liste_result))
 
-        #n=100
-        liste_url=list(map(lambda x:x["url_robots_txt"], liste_result))#liste_result[:n]
-        liste_id=list(map(lambda x:x["_id"], liste_result))#liste_result[:n]
-
+        # les resultats arrivent dans le même ordre que l'envoi 
         results_robots=self.scan_urls(liste_url, MongoDB_scrap_async.parser_robots, self.timeout_robots)
        
         start = perf_counter()
+        # on peut donc faire un zip avec la liste des ids mongodb
+        # on parcourt pour chaque réponse, on update le bon document dans la BDD mongodb
+        # les MAJ de chaque document dans la BDD sont très rapides 
         for id, element in tqdm(list(zip(liste_id, results_robots))):
-            self.client["scrapping"]["urls_sitemap_html"].update_one(
-                    {'_id':id},
-                    { "$set": 
-                                { "user_agent_rules": element["user_agent_rules"],
-                                "sitemaps_xml" : element["sitemaps_xml"]}
-                    },
-                    )
+                self.client["scrapping"]["urls_sitemap_html"].update_one(
+                        {'_id':id},
+                        { "$set": 
+                                    { 
+                                    "user_agent_rules": element["user_agent_rules"],
+                                    "sitemaps_xml" : element["sitemaps_xml"],
+                                    "is_responding" : element["is_responding"]
+                                    }
+                        },
+                        )
         stop = perf_counter()
-        print("\nTemps d'éxecution de toutes les mises à jours : {}".format(stop-start))
-        print("Nb sitemaps non vides : {}".format(len(list((filter(lambda x:len(x["sitemaps_xml"])!=0, results_robots))))))
-        #self.show_all("scrapping", "urls_sitemap_html", random=False, max_items=n)
 
+        # print de quelques statistiques
+        print("Temps d'éxecution des {} mises à jours : {}".format(len(liste_id), stop-start))
+        print("Nb sitemaps non vides : {}\n".format(len(list((filter(lambda x:len(x["sitemaps_xml"])!=0, results_robots))))))
+
+        exceptions_counts=pd.Series(list(map(lambda x:x["Exception"], list(filter(lambda x:"Exception" in x ,results_robots))))).value_counts()
+        print("\n".join(list(exceptions_counts.reset_index().apply(lambda x:"{}:{}".format(x["index"], x["count"]), axis=1))))
+        
+        #for detail debug 
+        #=========================== Gestion des bugs + http only no https =========================
+        les_bugs=list(filter(lambda x:"Exception" in x[2], list(zip(liste_url,liste_id, results_robots))))
+        liste_url_bugs=list(map(lambda x:x[0].replace("https", "http"), les_bugs))
+        liste_id_bugs=list(map(lambda x:x[1], les_bugs))
+    
+    def deep_search_batch_sitemaps(self):
+        ens_sitemap=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].find({"sitemaps_xml" : {"$ne" : []}}))
+
+
+        # a comprend si faut mettre $media_name, $_id, $url, 
+        #il y a aussi la possiblité de prendre les x premiers elements (firstN) semble-t-il
+        #mettre une limite ?
+        sitemaps_unscraped=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate(
+                                                                                    [
+                                                                                        {"$match" : {"sitemaps_xml" : {"$ne" : []}}}, #probablement pas nécessaire
+                                                                                        {"$unwind": "$sitemaps_xml"},
+                                                                                        {"$match" : {"sitemaps_xml.has_been_scrapped" : False}},
+                                                                                        {"$group":
+                                                                                            {
+                                                                                                "_id": "$url_root", #pour garder l'id du document dans la BDD MongoDB 
+                                                                                                "id_ref_site": 
+                                                                                                                {
+                                                                                                                "$first": "$_id"
+                                                                                                                },
+                                                                                                "sitemaps_xml": 
+                                                                                                                {
+                                                                                                                "$first": "$sitemaps_xml"
+                                                                                                                },
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                    ))
+
+"""
+Rajouter une date lors du scrap des robots.txt pour pouvoir sorter par date les urls à scrapper (voir filter si trop récent)
+
+
+"""     
 
 if __name__=="__main__":
     instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
-    #instance_Mongo.scan_robots_txt()
-    #pprint(instance_Mongo)
+    instance_Mongo.scan_robots_txt()
+    breakpoint()
+    pprint(instance_Mongo)
     #pprint(instance_Mongo.show_all("scrapping", "urls_sitemap_html", random=True, max_items=5))
+    #test=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].find({"sitemaps_xml" : {"$ne" : []}}))
 
