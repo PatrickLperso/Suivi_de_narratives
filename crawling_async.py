@@ -364,7 +364,7 @@ class MongoDB_scrap_async():
 
         # a comprend si faut mettre $media_name, $_id, $url, 
         #il y a aussi la possiblité de prendre les x premiers elements (firstN) semble-t-il
-        #mettre une limite ?
+        #mettre une limite, trier chronologiquement ?
         sitemaps_unscraped=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate(
                                                                                     [
                                                                                         {"$match" : {"sitemaps_xml" : {"$ne" : []}}}, #probablement pas nécessaire
@@ -386,11 +386,7 @@ class MongoDB_scrap_async():
                                                                                     ]
                                                                                     ))
 
-"""
-Rajouter une date lors du scrap des robots.txt pour pouvoir sorter par date les urls à scrapper (voir filter si trop récent)
 
-
-"""     
 
 if __name__=="__main__":
     instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
