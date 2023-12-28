@@ -28,9 +28,9 @@ Json thought structure / ¨Potentiellement utiliser du MongoDB
     "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
     "media_location" : ... , "coverage" : ... , "true_country" : ..., 
     "sitemaps_xml": [ 
-                        {url:xml1,  "has_been_scrapped" : True , "parent_xml" : None, "depth":0},
-                        {url:xml2, "has_been_scrapped" : True , "parent_xml" : "root_url", "depth":1}, 
-                        {url:xml3, "has_been_scrapped" : False , "parent_xml" : "root_url", "depth":1}, 
+                        {url:xml1,  "has_been_scrapped" : True , "parent_xml" : robots_txt_url, "depth":0},
+                        {url:xml2, "has_been_scrapped" : True , "parent_xml" : "xml1", "depth":1}, 
+                        {url:xml3, "has_been_scrapped" : False , "parent_xml" : "xml1", "depth":1}, 
                         {url:xml4, "has_been_scrapped" : True , "parent_xml" : "xml2", "depth":2},
                         {url:xml5, "has_been_scrapped" : False , "parent_xml" : "xml2", "depth":2},
                     ]
@@ -359,13 +359,13 @@ class MongoDB_scrap_async():
         liste_id_bugs=list(map(lambda x:x[1], les_bugs))
     
     def deep_search_batch_sitemaps(self):
-        ens_sitemap=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].find({"sitemaps_xml" : {"$ne" : []}}))
+        #ens_sitemap=list(self.client["scrapping"]["urls_sitemap_html"].find({"sitemaps_xml" : {"$ne" : []}}))
 
 
         # a comprend si faut mettre $media_name, $_id, $url, 
         #il y a aussi la possiblité de prendre les x premiers elements (firstN) semble-t-il
         #mettre une limite, trier chronologiquement ?
-        sitemaps_unscraped=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate(
+        sitemaps_unscraped=list(self.client["scrapping"]["urls_sitemap_html"].aggregate(
                                                                                     [
                                                                                         {"$match" : {"sitemaps_xml" : {"$ne" : []}}}, #probablement pas nécessaire
                                                                                         {"$unwind": "$sitemaps_xml"},
