@@ -23,27 +23,27 @@ from pymongo import MongoClient
 
 
 """
-Json thought structure / ¨Potentiellement utiliser du MongoDB
+Structure de données de la base de donnée MongoDB / A revoir potentiellement on va devoir tout dénormaliser
 {
     "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
     "media_location" : ... , "coverage" : ... , "true_country" : ..., 
     "sitemaps_xml": [ 
-                        {url:xml1,  "has_been_scrapped" : True , "parent_xml" : robots_txt_url, "depth":0},
-                        {url:xml2, "has_been_scrapped" : True , "parent_xml" : "xml1", "depth":1}, 
-                        {url:xml3, "has_been_scrapped" : False , "parent_xml" : "xml1", "depth":1}, 
-                        {url:xml4, "has_been_scrapped" : True , "parent_xml" : "xml2", "depth":2},
-                        {url:xml5, "has_been_scrapped" : False , "parent_xml" : "xml2", "depth":2},
+                        {url:xml1,  "has_been_scrapped" : True ,"is_responding": True,  "parent_xml" : robots_txt_url, "depth":0},
+                        {url:xml2, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, 
+                        {url:xml3, "has_been_scrapped" : False ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, 
+                        {url:xml4, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml2", "depth":2},
+                        {url:xml5, "has_been_scrapped" : False ,"is_responding": False, "parent_xml" : "xml2", "depth":2},
                     ]
     "html_urls": [
-                    {"url": url1 , "xml_source" : xml4 , "should_be_scrapped" : True, "has_been_scrapped" : True, "text" : ... }
-                    {"url": url2 , "xml_source" : xml4 , "should_be_scrapped" : True, "has_been_scrapped" : False, "text" : None }
-                    {"url": url3 , "xml_source" : xml4 , "should_be_scrapped" : False, "has_been_scrapped" : False, "text" : None }
-                    {"url": url3 , "xml_source" : xml4 , "should_be_scrapped" : False, "has_been_scrapped" : False, "text" : None }
-                 ]
-    "robots_txt_parsed" :   ,
+                    {"url": url1 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : True, "text" : ... }
+                    {"url": url2 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : False, "text" : None }
+                    {"url": url3 , "xml_source" : xml4 ,"is_responding": False, "has_been_scrapped" : False, "text" : None }
+                    {"url": url3 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : False, "text" : None }
+                ]
+                 
+    "robots_txt_parsed" :  {'Disallow': ['/synsearch/', ... ], 'Allow': []} ,
     "last_time_scrapped" : hour,
     "is_responding" : False,
-    "nb_not_responding" : 2,
     "robots_txt":
 }
 """
@@ -56,7 +56,7 @@ class MongoDB_scrap_async():
         self.show_all("scrapping", "urls_sitemap_html")
 
         self.timeout_robots=20
-        self.timeout_xml=40
+        self.timeout_xml=60
         
         if not self.test_collection_in_database_exists("scrapping", "urls_sitemap_html", print_arg=False):
             self.insert_data("scrapping", "urls_sitemap_html", 
@@ -186,15 +186,35 @@ class MongoDB_scrap_async():
                                     axis=1))
         return list_dictios
     
-    async def parser_xml(session, url):
+    async def parser_xml(session, dict_url_depth):
+        sitemap, url, =[], []
+        has_been_scrapped=False
+        is_responding=False
+        error=False
         try:
-            async with session.get(url) as response:
-                all_links=await list(filter(lambda x: "climat" in x.lower(), list(map(lambda x:"".join(x),
-                            re.findall(r"(http|ftp|https)(:\/\/[\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])", response.text())))))
-        except:
-            all_links=[]
-        return all_links
+            async with session.get(dict_url_depth["url"]) as response:
+                html = await response.text()
+                soup= BeautifulSoup(html, 'html.parser')
+                sitemap=list(map(lambda x:{"url":x.get_text(),
+                                           "has_been_scrapped" : False ,
+                                           "parent_xml":dict_url_depth["url"], 
+                                           "depth":dict_url_depth["depth"]+1,
+                                           "is_responding": True}, soup.select("sitemap loc")))
+                #ici on a besoin de l'url d'origine et de la profondeur (à voir si on garde ces infos), possibilité de ajouter ces infos après lors du retour
+                
+                url=list(map(lambda x:{"url": x.get_text() ,
+                                        "xml_source" : dict_url_depth["url"] , 
+                                        "is_responding": True, 
+                                        "has_been_scrapped" : False,
+                                        "text" : None }, soup.select("url loc")))
+                has_been_scrapped=True
+                is_responding=True
+        except Exception as e:
+            error=str(e)
+        finally:
+            return sitemap, url, has_been_scrapped, is_responding, error
     
+
     async def parser_robots(session, url):
         res={"user_agent_rules":{"Disallow":[], "Allow":[]}, "sitemaps_xml": [], "is_responding":False}
         try:
@@ -213,7 +233,13 @@ class MongoDB_scrap_async():
                                 res["user_agent_rules"]["Allow"].append(k.split(":",1)[1].strip(' '))
                             elif "sitemap" in k.lower().strip()[:7] and "http" in k: # on prend tous les sitemaps
                                 res["sitemaps_xml"].append(
-                                                    {"url":k.split(":", 1)[1].strip(' '),  "has_been_scrapped" : False , "parent_xml" : url, "depth":0}
+                                                    {   
+                                                        "url":k.split(":", 1)[1].strip(' '), 
+                                                        "has_been_scrapped" : False ,
+                                                        "is_responding": True,
+                                                        "parent_xml" : url, 
+                                                        "depth":0
+                                                    }
                                                         )
                     except Exception as e: 
                         # on ne casse pas la boucle mais on enregistre l'erreur quand même pour les logs/stats
@@ -329,7 +355,7 @@ class MongoDB_scrap_async():
         results_robots=self.scan_urls(liste_url, MongoDB_scrap_async.parser_robots, self.timeout_robots)
        
         start = perf_counter()
-        # on peut donc faire un zip avec la liste des ids mongodb
+        # on peut donc zipper avec la liste des ids mongodb
         # on parcourt pour chaque réponse, on update le bon document dans la BDD mongodb
         # les MAJ de chaque document dans la BDD sont très rapides 
         for id, element in tqdm(list(zip(liste_id, results_robots))):
@@ -352,7 +378,7 @@ class MongoDB_scrap_async():
         exceptions_counts=pd.Series(list(map(lambda x:x["Exception"], list(filter(lambda x:"Exception" in x ,results_robots))))).value_counts()
         print("\n".join(list(exceptions_counts.reset_index().apply(lambda x:"{}:{}".format(x["index"], x["count"]), axis=1))))
         
-        #for detail debug 
+        #Pour aller debugger les erreurs précisemment 
         #=========================== Gestion des bugs + http only no https =========================
         les_bugs=list(filter(lambda x:"Exception" in x[2], list(zip(liste_url,liste_id, results_robots))))
         liste_url_bugs=list(map(lambda x:x[0].replace("https", "http"), les_bugs))
@@ -365,34 +391,95 @@ class MongoDB_scrap_async():
         # a comprend si faut mettre $media_name, $_id, $url, 
         #il y a aussi la possiblité de prendre les x premiers elements (firstN) semble-t-il
         #mettre une limite, trier chronologiquement ?
+        #Pour les documents en html voir pour les sitemaps, prendre les allow disallow faire un regex 
+
+        start = perf_counter()
         sitemaps_unscraped=list(self.client["scrapping"]["urls_sitemap_html"].aggregate(
-                                                                                    [
-                                                                                        {"$match" : {"sitemaps_xml" : {"$ne" : []}}}, #probablement pas nécessaire
-                                                                                        {"$unwind": "$sitemaps_xml"},
-                                                                                        {"$match" : {"sitemaps_xml.has_been_scrapped" : False}},
-                                                                                        {"$group":
-                                                                                            {
-                                                                                                "_id": "$url_root", #pour garder l'id du document dans la BDD MongoDB 
-                                                                                                "id_ref_site": 
-                                                                                                                {
-                                                                                                                "$first": "$_id"
-                                                                                                                },
-                                                                                                "sitemaps_xml": 
-                                                                                                                {
-                                                                                                                "$first": "$sitemaps_xml"
-                                                                                                                },
-                                                                                            }
-                                                                                        }
-                                                                                    ]
-                                                                                    ))
+                                                    [
+                                                        {"$match" : {"sitemaps_xml" : {"$ne" : []}}}, # récupère les documents avec sitemap non vides
+                                                        {"$unwind": "$sitemaps_xml"}, # dénormalisation des sitemaps {A, B, [C, D]} => {A, B, C}, {A, B, D}
+                                                        {"$match" : 
+                                                            {
+                                                                "$and":
+                                                                    [
+                                                                        {
+                                                                            "sitemaps_xml.has_been_scrapped" : False # le sitemap a t-il été scrappé ?
+                                                                        },
+                                                                        {
+                                                                            "sitemaps_xml.is_responding" : True # si le lien n'a pas été scrappé peut-être que le lien ne répondait tout simplement pas
+                                                                        },
+                                                                        {
+                                                                            "sitemaps_xml.url" : # ne doit pas contenir le mot video, author, topic dans le lien du sitemap
+                                                                                                { 
+                                                                                                    '$regex' : '^(?!.*(video|author|topic)).*$', 
+                                                                                                    '$options' : 'i'
+                                                                                                },  
+                                                                        }
+                                                                    ]
+                                                            }
+                                                        },
+                                                        {"$group":
+                                                            {
+                                                                "_id": "$url_root", # pour ne jamais scrapper le même ste à chaque passe plusieurs fois 
+                                                                "id_ref_site": # pour garder l'id du document dans la BDD MongoDB 
+                                                                                {
+                                                                                "$first": "$_id"
+                                                                                },
+                                                                "sitemaps_xml": 
+                                                                                {
+                                                                                "$first": "$sitemaps_xml"
+                                                                                },
+                                                            }
+                                                        }
+                                                    ]
+                                                )
+                                            )
+        stop = perf_counter()
+        print("Temps de la requête : {}, extraction de {} urls".format(stop-start, len(sitemaps_unscraped)))
+        
+
+        # on récupère la liste des url et des ids mongodb
+        liste_url_depth_to_scrap=list(map(lambda x:{"url":x["sitemaps_xml"]["url"], "depth":x["sitemaps_xml"]["depth"]}, sitemaps_unscraped))
+
+        liste_url_parent=list(map(lambda x:x["sitemaps_xml"]["url"], sitemaps_unscraped))
+        liste_id_site=list(map(lambda x:x["id_ref_site"], sitemaps_unscraped))
+
+        results_sitemaps=self.scan_urls(liste_url_depth_to_scrap, MongoDB_scrap_async.parser_xml, self.timeout_robots)
+        print("Nb Exceptions : {}".format(len(list(filter(lambda x:x[4], results_sitemaps)))))
+        print("Nb xml Not Empty : {}".format(len(list(filter(lambda x:len(x[0])!=0, results_sitemaps)))))
+        print("Nb html Not Empty : {}".format(len(list(filter(lambda x:len(x[1])!=0, results_sitemaps)))))
+        print("Nb New html : {}".format(sum(list(map(lambda x:len(x[0]), results_sitemaps)))))
+        print("Nb New xml : {}".format(sum(list(map(lambda x:len(x[1]), results_sitemaps)))))
+        breakpoint()
+
+        for id, url_parent, resultats in tqdm(list(zip(liste_id_site, liste_url_parent, results_sitemaps))):
+            self.client["scrapping"]["urls_sitemap_html"].update_one(
+                                                { "_id": id},
+                                                { "$set": 
+                                                        { 
+                                                            "sitemaps_xml.$[element].has_been_scrapped" : resultats[2],
+                                                            "sitemaps_xml.$[element].is_responding" : resultats[3]
+                                                        } 
+                                                },
+                                                upsert=True,
+                                                array_filters=[ { "element.url": url_parent } ]
+                                            )
+        #================= Il ne manque plus qu'à faire l'insertions des nouvelles données dans la base de données
+ 
+
+            
+        
+        
+        
 
 
 
 if __name__=="__main__":
     instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
-    instance_Mongo.scan_robots_txt()
+    #instance_Mongo.scan_robots_txt()
+    instance_Mongo.deep_search_batch_sitemaps()
     breakpoint()
-    pprint(instance_Mongo)
+    print(1)
     #pprint(instance_Mongo.show_all("scrapping", "urls_sitemap_html", random=True, max_items=5))
     #test=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].find({"sitemaps_xml" : {"$ne" : []}}))
 
