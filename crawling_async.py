@@ -28,20 +28,20 @@ Structure de données de la base de donnée MongoDB / A revoir potentiellement o
     "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
     "media_location" : ... , "coverage" : ... , "true_country" : ..., 
     "sitemaps_xml": [ 
-                        {url:xml1,  "has_been_scrapped" : True ,"is_responding": True,  "parent_xml" : robots_txt_url, "depth":0},
-                        {url:xml2, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, 
-                        {url:xml3, "has_been_scrapped" : False ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, 
-                        {url:xml4, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml2", "depth":2},
-                        {url:xml5, "has_been_scrapped" : False ,"is_responding": False, "parent_xml" : "xml2", "depth":2},
+                        {url:xml1,  "has_been_scrapped" : True ,"is_responding": True,  "parent_xml" : robots_txt_url, "depth":0}, #l'url a été scrappée
+                        {url:xml2, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, #l'url a été scrappée
+                        {url:xml3, "has_been_scrapped" : False ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, #dans cette config l'url n'a pas été testé
+                        {url:xml4, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml2", "depth":2}, #l'url a été scrappée
+                        {url:xml5, "has_been_scrapped" : False ,"is_responding": False, "parent_xml" : "xml2", "depth":2}, #l'url n'a pas répondue
                     ]
     "html_urls": [
-                    {"url": url1 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : True, "text" : ... }
-                    {"url": url2 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : False, "text" : None }
-                    {"url": url3 , "xml_source" : xml4 ,"is_responding": False, "has_been_scrapped" : False, "text" : None }
-                    {"url": url3 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : False, "text" : None }
+                    {"url": url1 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : True, "text" : ... }  #l'url a été scrappée
+                    {"url": url2 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : False, "text" : None } #dans cette config l'url n'a pas été testé
+                    {"url": url3 , "xml_source" : xml4 ,"is_responding": False, "has_been_scrapped" : False, "text" : None } #l'url n'a pas répondue
+                    {"url": url3 , "xml_source" : xml4 ,"is_responding": False, "has_been_scrapped" : False, "text" : None } #l'url n'a pas répondue
                 ]
                  
-    "robots_txt_parsed" :  {'Disallow': ['/synsearch/', ... ], 'Allow': []} ,
+    "robots_txt_parsed" :  {'Disallow': ['/synsearch/', ... ], 'Allow': []} , #probablement à changer pour donner directement une regex de ce type ^(?!.*(video|author|topic)).*$'
     "last_time_scrapped" : hour,
     "is_responding" : False,
     "robots_txt":
@@ -197,15 +197,16 @@ class MongoDB_scrap_async():
                 soup= BeautifulSoup(html, 'html.parser')
                 sitemap=list(map(lambda x:{"url":x.get_text(),
                                            "has_been_scrapped" : False ,
+                                           "is_responding": True,
                                            "parent_xml":dict_url_depth["url"], 
-                                           "depth":dict_url_depth["depth"]+1,
-                                           "is_responding": True}, soup.select("sitemap loc")))
+                                           "depth":dict_url_depth["depth"]+1
+                                           }, soup.select("sitemap loc")))
                 #ici on a besoin de l'url d'origine et de la profondeur (à voir si on garde ces infos), possibilité de ajouter ces infos après lors du retour
                 
                 url=list(map(lambda x:{"url": x.get_text() ,
-                                        "xml_source" : dict_url_depth["url"] , 
-                                        "is_responding": True, 
                                         "has_been_scrapped" : False,
+                                        "is_responding": True, 
+                                        "xml_source" : dict_url_depth["url"] , 
                                         "text" : None }, soup.select("url loc")))
                 has_been_scrapped=True
                 is_responding=True
@@ -335,6 +336,29 @@ class MongoDB_scrap_async():
 
         return results
     
+    def list_url_climat(self):
+        return list(self.client["scrapping"]["urls_sitemap_html"].aggregate(
+                                                    [
+                                                        {"$unwind": "$html_urls"}, 
+                                                        {"$match" : 
+                                                            {
+                                                                "$and":
+                                                                    [
+                                                                        {
+                                                                            "html_urls.url" : # doit contenir le mot climat
+                                                                                                { 
+                                                                                                    '$regex' : '^(.*(climat)).*$', 
+                                                                                                    '$options' : 'i'
+                                                                                                },  
+                                                                        }
+                                                                    ]
+                                                            }
+                                                        },
+                                                    ]
+                                            )
+                                    )
+
+    
     def scan_urls(self, liste_url, fonction, timeout_total):
         start = perf_counter()
         liste_results=asyncio.run(MongoDB_scrap_async.main(liste_url,fonction, timeout_total))
@@ -411,7 +435,7 @@ class MongoDB_scrap_async():
                                                                         {
                                                                             "sitemaps_xml.url" : # ne doit pas contenir le mot video, author, topic dans le lien du sitemap
                                                                                                 { 
-                                                                                                    '$regex' : '^(?!.*(video|author|topic)).*$', 
+                                                                                                    '$regex' : '^(?!.*(video|author|topic|category)).*$', 
                                                                                                     '$options' : 'i'
                                                                                                 },  
                                                                         }
@@ -420,7 +444,7 @@ class MongoDB_scrap_async():
                                                         },
                                                         {"$group":
                                                             {
-                                                                "_id": "$url_root", # pour ne jamais scrapper le même ste à chaque passe plusieurs fois 
+                                                                "_id": "$url_root", # pour ne jamais scrapper le même site à chaque passe plusieurs fois 
                                                                 "id_ref_site": # pour garder l'id du document dans la BDD MongoDB 
                                                                                 {
                                                                                 "$first": "$_id"
@@ -435,24 +459,22 @@ class MongoDB_scrap_async():
                                                 )
                                             )
         stop = perf_counter()
-        print("Temps de la requête : {}, extraction de {} urls".format(stop-start, len(sitemaps_unscraped)))
+        print("\nTemps de la requête : {}, extraction de {} urls".format(stop-start, len(sitemaps_unscraped)))
         
 
         # on récupère la liste des url et des ids mongodb
         liste_url_depth_to_scrap=list(map(lambda x:{"url":x["sitemaps_xml"]["url"], "depth":x["sitemaps_xml"]["depth"]}, sitemaps_unscraped))
-
-        liste_url_parent=list(map(lambda x:x["sitemaps_xml"]["url"], sitemaps_unscraped))
         liste_id_site=list(map(lambda x:x["id_ref_site"], sitemaps_unscraped))
 
         results_sitemaps=self.scan_urls(liste_url_depth_to_scrap, MongoDB_scrap_async.parser_xml, self.timeout_robots)
         print("Nb Exceptions : {}".format(len(list(filter(lambda x:x[4], results_sitemaps)))))
-        print("Nb xml Not Empty : {}".format(len(list(filter(lambda x:len(x[0])!=0, results_sitemaps)))))
-        print("Nb html Not Empty : {}".format(len(list(filter(lambda x:len(x[1])!=0, results_sitemaps)))))
+        print("Nb xml Empty : {}".format(len(list(filter(lambda x:len(x[0])==0, results_sitemaps)))))
+        print("Nb html Empty : {}".format(len(list(filter(lambda x:len(x[1])==0, results_sitemaps)))))
         print("Nb New html : {}".format(sum(list(map(lambda x:len(x[0]), results_sitemaps)))))
         print("Nb New xml : {}".format(sum(list(map(lambda x:len(x[1]), results_sitemaps)))))
-        breakpoint()
-
-        for id, url_parent, resultats in tqdm(list(zip(liste_id_site, liste_url_parent, results_sitemaps))):
+        
+        start = perf_counter()
+        for id, depth_url_parent, resultats in list(zip(liste_id_site, liste_url_depth_to_scrap, results_sitemaps)):
             self.client["scrapping"]["urls_sitemap_html"].update_one(
                                                 { "_id": id},
                                                 { "$set": 
@@ -461,11 +483,30 @@ class MongoDB_scrap_async():
                                                             "sitemaps_xml.$[element].is_responding" : resultats[3]
                                                         } 
                                                 },
-                                                upsert=True,
-                                                array_filters=[ { "element.url": url_parent } ]
+                                                upsert=False, # ne fait pas d'insert si aucun document trouvés
+                                                array_filters=[ { "element.url": depth_url_parent["url"] }  ]
                                             )
-        #================= Il ne manque plus qu'à faire l'insertions des nouvelles données dans la base de données
- 
+            
+            self.client["scrapping"]["urls_sitemap_html"].update_one(
+                                                { "_id": id},
+                                                { "$push": 
+                                                        { 
+                                                            "sitemaps_xml" :  
+                                                            {
+                                                                "$each" : resultats[0]
+                                                            },
+                                                            "html_urls" :  
+                                                            {
+                                                                "$each" : resultats[1]
+                                                            }
+                                                        }
+                                                }
+                                                )
+        stop = perf_counter()
+        print("Temps des insertions et mise à jours :{}".format(stop-start))
+
+            
+
 
             
         
@@ -476,10 +517,46 @@ class MongoDB_scrap_async():
 
 if __name__=="__main__":
     instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
+
+
     #instance_Mongo.scan_robots_txt()
-    instance_Mongo.deep_search_batch_sitemaps()
+
+
+    stat_start_sitemaps=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$sitemaps_xml"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
+    stat_start_html=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$html_urls"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
+    stat_start_climat=instance_Mongo.list_url_climat()
+    breakpoint()
+    print("\nNb sitemaps start:{}".format(sum(list(map(lambda x:x["count"], stat_start_sitemaps)))))
+    print("Nb html pages start :{}".format(sum(list(map(lambda x:x["count"], stat_start_html)))))
+    print("Nb pages parlant du climat :{}".format(len(stat_start_climat)))
+
+    """
+    start = perf_counter()
+    for k in range(100):
+        print("\n=========iteration: {}========".format(k))
+        instance_Mongo.deep_search_batch_sitemaps()
+    stop = perf_counter()
+    
+    stat_end_sitemaps=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$sitemaps_xml"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
+    stat_end_html=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$html_urls"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
+    stat_end_climat=instance_Mongo.list_url_climat()
+
+
+    
+
+
+
+
+    print("\n===================Statistiques=================")
+    print("temps d'execution :{}".format(stop-start))
+    print("Nb sitemaps :{}".format(sum(list(map(lambda x:x["count"], stat_end_sitemaps)))))
+    print("Nb html pages :{}".format(sum(list(map(lambda x:x["count"], stat_end_html)))))
+    print("Nb moyen de sitemaps par site :{}".format(np.mean(np.array(list(map(lambda x:x["count"], stat_end_sitemaps))))))
+    print("Nb moyen de html pages par site :{}".format(np.mean(np.array(list(map(lambda x:x["count"], stat_end_html))))))
+    print("Nb pages parlant du climat :{}".format(len(stat_end_climat)))
+
     breakpoint()
     print(1)
     #pprint(instance_Mongo.show_all("scrapping", "urls_sitemap_html", random=True, max_items=5))
-    #test=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].find({"sitemaps_xml" : {"$ne" : []}}))
 
+    """
