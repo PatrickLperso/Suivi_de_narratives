@@ -30,32 +30,28 @@ pip install -r requirements_async_crawl.txt
 
 ### BDD MongoDB 
 
-Pour récupérer et lancer une instance docker. Lancez la commande suivante (elle est amenée à changer ), parce qu'il n'y a pas 
-pour l'instant de presistance locale des données à l'aide d'un volume docker 
+Crée un docker volume
 ```bash
-docker run -d -p 27017:27017 --name Mongodb_scrapping mongo:latest
+docker volume create MongoDB_scrapping_volume
+```
+
+Lance le conteneur docker 
+```bash
+docker run -d -p 27017:27017 -v MongoDB_scrapping_volume:/data/db --name Mongodb_scrapping mongo:latest
 ```
 Cette commande lance une image mongo en mode détache (-d) avec un forwarding du port 27017 sur le locahost (-p 27017:27017)
 Le conteneur porte un nom en l'occurence Mongodb_scrapping
 
-Pour voir les conteneurs en cours d'éxecution:
-```bash 
-docker ps
-```
-Pour arrêter et supprimer le conteneur Mongodb_scrapping en cours d'éxecution
+Pour arrêter et supprimer le conteneur Mongodb_scrapping en cours d'éxecution, le docker volume est persistant
 ```bash
 docker ps | grep Mongodb_scrapping | awk '{print $1}' | xargs docker stop | xargs docker rm
 ```
 
+
+
 ### Executer code
 Si le docker Mongo a été lancée corrrecement et que les installations ont été faites dans le venv
-Il n'y a plus qu'à lancer l'importation des données dans la BDD MongoDB pour l'instant que 30 items
-concernant des médias britanniques. Pour importer toutes les données, mettre la variable test=False dans le code suivant :
-```python
-if __name__=="__main__":
-    instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
-    pprint(instance_Mongo)
-```
+Il n'y a plus qu'à lancer l'importation des données dans la BDD MongoDB et lancer le crawler
 
 Lancement du script 
 ```bash

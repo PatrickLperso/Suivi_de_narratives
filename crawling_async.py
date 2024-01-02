@@ -10,7 +10,7 @@ import urllib.parse
 import pandas as pd
 import urllib.robotparser
 import asyncio
-from time import perf_counter
+from time import perf_counter, sleep
 import sys, os
 from bs4 import BeautifulSoup
 import re
@@ -20,7 +20,7 @@ from pprint import pprint, pformat
 from tqdm.asyncio import tqdm_asyncio
 from tqdm import tqdm
 from pymongo import MongoClient
-
+import matplotlib.pyplot as plt
 
 """
 Structure de données de la base de donnée MongoDB / A revoir potentiellement on va devoir tout dénormaliser
@@ -55,8 +55,8 @@ class MongoDB_scrap_async():
         self.ping_MongoDB()
         self.show_all("scrapping", "urls_sitemap_html")
 
-        self.timeout_robots=20
-        self.timeout_xml=60
+        self.timeout_robots=60
+        self.timeout_xml=40
         
         if not self.test_collection_in_database_exists("scrapping", "urls_sitemap_html", print_arg=False):
             self.insert_data("scrapping", "urls_sitemap_html", 
@@ -159,7 +159,14 @@ class MongoDB_scrap_async():
         df_urls.loc[:, "url"]=df_urls.loc[:, "url"].apply(lambda x:x.replace("http:", "https:"))
 
         if test:
-            df_urls=df_urls.loc[df_urls.loc[:, "true_country"]=="United Kingdom", :]
+            liste_countries=['United Kingdom','United States','Nigeria','South Africa','India','New Zealand','Philippines',
+                            'Ireland','Australia','Africa Regional','Bangladesh','Canada','Ghana','Pakistan',
+                            'Zambia','International','Asia Regional','Somalia','Sri Lanka',
+                            'Cuba','Sierra Leone','Kenya','Near and Middle East Regional',
+                            'Ethiopia','Spain','Israel','Liberia','China']
+            liste_countries=['United States']
+            
+            df_urls=df_urls.loc[df_urls.loc[:, "true_country"].isin(liste_countries), :]
         
 
         list_dictios=list(df_urls.apply(lambda row:
@@ -194,7 +201,7 @@ class MongoDB_scrap_async():
         try:
             async with session.get(dict_url_depth["url"]) as response:
                 html = await response.text()
-                soup= BeautifulSoup(html, 'html.parser')
+                soup= BeautifulSoup(html, features="xml")
                 sitemap=list(map(lambda x:{"url":x.get_text(),
                                            "has_been_scrapped" : False ,
                                            "is_responding": True,
@@ -202,12 +209,22 @@ class MongoDB_scrap_async():
                                            "depth":dict_url_depth["depth"]+1
                                            }, soup.select("sitemap loc")))
                 #ici on a besoin de l'url d'origine et de la profondeur (à voir si on garde ces infos), possibilité de ajouter ces infos après lors du retour
+                """
+                url=list(map(lambda x:{"url": x.get_text() ,
+                                        "has_been_scrapped" : False,
+                                        "is_responding": True, 
+                                        "xml_source" : dict_url_depth["url"] , 
+                                        "text" : None }, soup.select("url loc")))"""
                 
                 url=list(map(lambda x:{"url": x.get_text() ,
                                         "has_been_scrapped" : False,
                                         "is_responding": True, 
                                         "xml_source" : dict_url_depth["url"] , 
-                                        "text" : None }, soup.select("url loc")))
+                                        "text" : None }, list(filter(lambda x:"climat" in x.get_text() , soup.select("url loc")))))
+                
+                
+                
+
                 has_been_scrapped=True
                 is_responding=True
         except Exception as e:
@@ -454,7 +471,8 @@ class MongoDB_scrap_async():
                                                                                 "$first": "$sitemaps_xml"
                                                                                 },
                                                             }
-                                                        }
+                                                        },
+                                                        {"$limit" : 1000 }
                                                     ]
                                                 )
                                             )
@@ -466,13 +484,15 @@ class MongoDB_scrap_async():
         liste_url_depth_to_scrap=list(map(lambda x:{"url":x["sitemaps_xml"]["url"], "depth":x["sitemaps_xml"]["depth"]}, sitemaps_unscraped))
         liste_id_site=list(map(lambda x:x["id_ref_site"], sitemaps_unscraped))
 
-        results_sitemaps=self.scan_urls(liste_url_depth_to_scrap, MongoDB_scrap_async.parser_xml, self.timeout_robots)
+        results_sitemaps=self.scan_urls(liste_url_depth_to_scrap, MongoDB_scrap_async.parser_xml, self.timeout_xml)
         print("Nb Exceptions : {}".format(len(list(filter(lambda x:x[4], results_sitemaps)))))
         print("Nb xml Empty : {}".format(len(list(filter(lambda x:len(x[0])==0, results_sitemaps)))))
         print("Nb html Empty : {}".format(len(list(filter(lambda x:len(x[1])==0, results_sitemaps)))))
-        print("Nb New html : {}".format(sum(list(map(lambda x:len(x[0]), results_sitemaps)))))
-        print("Nb New xml : {}".format(sum(list(map(lambda x:len(x[1]), results_sitemaps)))))
+        print("Nb New xml : {}".format(sum(list(map(lambda x:len(x[0]), results_sitemaps)))))
+        print("Nb New html : {}".format(sum(list(map(lambda x:len(x[1]), results_sitemaps)))))
         
+        #breakpoint()
+
         start = perf_counter()
         for id, depth_url_parent, resultats in list(zip(liste_id_site, liste_url_depth_to_scrap, results_sitemaps)):
             self.client["scrapping"]["urls_sitemap_html"].update_one(
@@ -505,7 +525,8 @@ class MongoDB_scrap_async():
         stop = perf_counter()
         print("Temps des insertions et mise à jours :{}".format(stop-start))
 
-            
+        print("Nb pages parlant du climat :{}".format(len(instance_Mongo.list_url_climat())))
+
 
 
             
@@ -518,21 +539,35 @@ class MongoDB_scrap_async():
 if __name__=="__main__":
     instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
 
-
     #instance_Mongo.scan_robots_txt()
 
 
-    stat_start_sitemaps=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$sitemaps_xml"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
-    stat_start_html=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$html_urls"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
+    stat_start_sitemaps=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$sitemaps_xml"},
+                                                                                                {"$group": 
+                                                                                                    {"_id" : "$url", 
+                                                                                                     "count" : {"$sum" : 1}}
+                                                                                                }
+                                                                                                ]))
+    stat_start_html=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$html_urls"},
+                                                                                            {"$group":
+                                                                                               {"_id" : "$url", 
+                                                                                                "count" : {"$sum" : 1}
+                                                                                                }
+                                                                                            }
+                                                                                            ]))
     stat_start_climat=instance_Mongo.list_url_climat()
-    breakpoint()
+
+    stat_start_sitemaps=sorted(stat_start_sitemaps, key=lambda x:x["count"])
+    stat_start_html=sorted(stat_start_html, key=lambda x:x["count"])
+
     print("\nNb sitemaps start:{}".format(sum(list(map(lambda x:x["count"], stat_start_sitemaps)))))
     print("Nb html pages start :{}".format(sum(list(map(lambda x:x["count"], stat_start_html)))))
     print("Nb pages parlant du climat :{}".format(len(stat_start_climat)))
-
-    """
+    
+    
     start = perf_counter()
-    for k in range(100):
+    for k in range(1):
+        sleep(5)
         print("\n=========iteration: {}========".format(k))
         instance_Mongo.deep_search_batch_sitemaps()
     stop = perf_counter()
@@ -540,23 +575,23 @@ if __name__=="__main__":
     stat_end_sitemaps=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$sitemaps_xml"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
     stat_end_html=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$html_urls"}, {"$group": {"_id" : "$url", "count" : {"$sum" : 1}}}]))
     stat_end_climat=instance_Mongo.list_url_climat()
+    stat_end_sitemaps=sorted(stat_end_sitemaps, key=lambda x:x["count"])
+    stat_end_html=sorted(stat_end_html, key=lambda x:x["count"])
 
 
     
 
+    figure=pd.Series(list(map(lambda x:'{}://{}/'.format(urllib.parse.urlparse(x["html_urls"]["url"]).scheme, 
+                                                         urllib.parse.urlparse(x["html_urls"]["url"]).netloc ), stat_end_climat))).value_counts().plot.pie()
+    plt.show()
 
 
-
-    print("\n===================Statistiques=================")
+    print("\n================= Statistiques ===================")
     print("temps d'execution :{}".format(stop-start))
     print("Nb sitemaps :{}".format(sum(list(map(lambda x:x["count"], stat_end_sitemaps)))))
     print("Nb html pages :{}".format(sum(list(map(lambda x:x["count"], stat_end_html)))))
     print("Nb moyen de sitemaps par site :{}".format(np.mean(np.array(list(map(lambda x:x["count"], stat_end_sitemaps))))))
     print("Nb moyen de html pages par site :{}".format(np.mean(np.array(list(map(lambda x:x["count"], stat_end_html))))))
     print("Nb pages parlant du climat :{}".format(len(stat_end_climat)))
-
-    breakpoint()
-    print(1)
-    #pprint(instance_Mongo.show_all("scrapping", "urls_sitemap_html", random=True, max_items=5))
-
-    """
+    
+    
