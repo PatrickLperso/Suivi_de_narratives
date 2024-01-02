@@ -24,6 +24,9 @@ import matplotlib.pyplot as plt
 
 """
 Structure de données de la base de donnée MongoDB / A revoir potentiellement on va devoir tout dénormaliser
+Crée une deuxième table pour stocker toutes les URLS ?
+
+
 {
     "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
     "media_location" : ... , "coverage" : ... , "true_country" : ..., 
@@ -352,7 +355,6 @@ class MongoDB_scrap_async():
             await asyncio.sleep(0.25)
 
         return results
-    
     def list_url_climat(self):
         return list(self.client["scrapping"]["urls_sitemap_html"].aggregate(
                                                     [
@@ -371,6 +373,13 @@ class MongoDB_scrap_async():
                                                                     ]
                                                             }
                                                         },
+                                                        { "$project": 
+                                                                { 
+                                                                    "_id":0,
+                                                                    "html_urls.url": 1, 
+                                                                    "url" : 1
+                                                                }
+                                                        }
                                                     ]
                                             )
                                     )
@@ -424,6 +433,17 @@ class MongoDB_scrap_async():
         les_bugs=list(filter(lambda x:"Exception" in x[2], list(zip(liste_url,liste_id, results_robots))))
         liste_url_bugs=list(map(lambda x:x[0].replace("https", "http"), les_bugs))
         liste_id_bugs=list(map(lambda x:x[1], les_bugs))
+
+    def url_waybackmachine(uri_netloc, regex):#inutile mais stocker pour le garder
+
+        url_waybackmachine="https://web.archive.org/cdx/search/cdx?url={}/".format(uri_netloc)
+        url_waybackmachine+="&fl=original,timestamp&matchType=prefix&collapse=urlkey"
+        url_waybackmachine+="&filter=mimetype:text/html&filter=statuscode:200"
+        url_waybackmachine+="&showSkipCount=true&output=json"
+        url_waybackmachine+="&filter=original:{}".format(regex)
+
+        return url_waybackmachine
+
     
     def deep_search_batch_sitemaps(self):
         #ens_sitemap=list(self.client["scrapping"]["urls_sitemap_html"].find({"sitemaps_xml" : {"$ne" : []}}))
@@ -538,7 +558,7 @@ class MongoDB_scrap_async():
 
 if __name__=="__main__":
 
-    n_cycles=50  #nombre de cycles de crawling
+    n_cycles=500  #nombre de cycles de crawling
     crawling_robots=False #initlisation avec le crawling des robots.txt
 
 
@@ -573,8 +593,8 @@ if __name__=="__main__":
     
     start = perf_counter()
     for k in range(n_cycles):
-        sleep(5)
-        print("\n=========iteration: {}========".format(k))
+        sleep(3)
+        print("\n=========iteration: {}/{}========".format(k, n_cycles))
         instance_Mongo.deep_search_batch_sitemaps()
     stop = perf_counter()
     
@@ -584,14 +604,6 @@ if __name__=="__main__":
     stat_end_sitemaps=sorted(stat_end_sitemaps, key=lambda x:x["count"])
     stat_end_html=sorted(stat_end_html, key=lambda x:x["count"])
 
-
-    
-
-    figure=pd.Series(list(map(lambda x:'{}://{}/'.format(urllib.parse.urlparse(x["html_urls"]["url"]).scheme, 
-                                                         urllib.parse.urlparse(x["html_urls"]["url"]).netloc ), stat_end_climat))).value_counts().plot.pie()
-    plt.show()
-
-
     print("\n================= Statistiques ===================")
     print("temps d'execution :{}".format(stop-start))
     print("Nb sitemaps :{}".format(sum(list(map(lambda x:x["count"], stat_end_sitemaps)))))
@@ -599,5 +611,15 @@ if __name__=="__main__":
     print("Nb moyen de sitemaps par site :{}".format(np.mean(np.array(list(map(lambda x:x["count"], stat_end_sitemaps))))))
     print("Nb moyen de html pages par site :{}".format(np.mean(np.array(list(map(lambda x:x["count"], stat_end_html))))))
     print("Nb pages parlant du climat :{}".format(len(stat_end_climat)))
+    
+    figure, axes = plt.subplots(1, 2)
+    axes[0].pie(list(map(lambda x:x["count"], stat_end_html)), labels=list(map(lambda x:x["_id"]+"\n"+str(x["count"]), stat_end_html)),autopct='%1.1f%%')
+    axes[0].set_title("Distriution des pages html par site")
+    axes[1].pie(list(map(lambda x:x["count"], stat_end_sitemaps)), labels=list(map(lambda x:x["_id"]+"\n"+str(x["count"]), stat_end_sitemaps)),autopct='%1.1f%%')
+    axes[1].set_title("Distriution du nombre de sitemaps par site")
+    plt.show()
+    
+
+
     
     
