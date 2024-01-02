@@ -434,7 +434,7 @@ class MongoDB_scrap_async():
         liste_url_bugs=list(map(lambda x:x[0].replace("https", "http"), les_bugs))
         liste_id_bugs=list(map(lambda x:x[1], les_bugs))
 
-    def url_waybackmachine(uri_netloc, regex):#inutile mais stocker pour le garder
+    def url_waybackmachine(uri_netloc, regex):#inutile mais stock" pour le garder
 
         url_waybackmachine="https://web.archive.org/cdx/search/cdx?url={}/".format(uri_netloc)
         url_waybackmachine+="&fl=original,timestamp&matchType=prefix&collapse=urlkey"
