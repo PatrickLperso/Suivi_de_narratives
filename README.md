@@ -20,7 +20,7 @@ url_500_11.json contient les robots.txt, et sitemap.xml des données GDELT
 
 ### venv pour crawling_async.py
 
-Créer un venv, activation , et installation des paquets pip
+Créer un venv, activation , et installation des paquets pip. Le requirement est commun au .py et .ipynb
 ```bash 
 python3 -m venv venv
 source env/bin/activate
