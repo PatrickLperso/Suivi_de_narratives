@@ -537,9 +537,15 @@ class MongoDB_scrap_async():
 
 
 if __name__=="__main__":
+
+    n_cycles=50  #nombre de cycles de crawling
+    crawling_robots=False #initlisation avec le crawling des robots.txt
+
+
     instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
 
-    #instance_Mongo.scan_robots_txt()
+    if crawling_robots:
+        instance_Mongo.scan_robots_txt()
 
 
     stat_start_sitemaps=list(instance_Mongo.client["scrapping"]["urls_sitemap_html"].aggregate([{"$unwind": "$sitemaps_xml"},
@@ -566,7 +572,7 @@ if __name__=="__main__":
     
     
     start = perf_counter()
-    for k in range(1):
+    for k in range(n_cycles):
         sleep(5)
         print("\n=========iteration: {}========".format(k))
         instance_Mongo.deep_search_batch_sitemaps()

@@ -51,9 +51,25 @@ docker ps | grep Mongodb_scrapping | awk '{print $1}' | xargs docker stop | xarg
 
 ### Executer code
 Si le docker Mongo a été lancée corrrecement et que les installations ont été faites dans le venv
-Il n'y a plus qu'à lancer l'importation des données dans la BDD MongoDB et lancer le crawler
+Il n'y a plus qu'à lancer l'importation des données dans la BDD MongoDB 
 
-Lancement du script 
+Pour le premier run, il faudra scrapper les robots.txt 
+```python
+if __name__=="__main__":
+
+    n_cycles=50  #nombre de cycles de crawling
+    crawling_robots=True #initlisation avec le crawling des robots.txt
+```
+
+Ensuite, ce ne sera plus nécessaire, la variable crawling_robots sera mise à False
+```python
+if __name__=="__main__":
+
+    n_cycles=50  #nombre de cycles de crawling
+    crawling_robots=False #initlisation avec le crawling des robots.txt
+```
+
+Lancer le scraper 
 ```bash
 python crawling_async.py
 ```
