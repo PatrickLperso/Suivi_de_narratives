@@ -123,5 +123,5 @@ df_pays=url_pays()
 
 list_fail,list_data=country(df_pays)
 df_total=pd.concat(list_data, axis=0)
-df_total.to_csv("medias_per_coutries.csv")
+df_total.to_csv("data/medias_per_coutries.csv")
 

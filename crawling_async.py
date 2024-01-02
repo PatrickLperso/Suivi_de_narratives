@@ -63,7 +63,7 @@ class MongoDB_scrap_async():
         
         if not self.test_collection_in_database_exists("scrapping", "urls_sitemap_html", print_arg=False):
             self.insert_data("scrapping", "urls_sitemap_html", 
-                             MongoDB_scrap_async.create_dictio_data_from_csv("medias_per_countries.csv", test=test))
+                             MongoDB_scrap_async.create_dictio_data_from_csv("data/medias_per_countries.csv", test=test))
         
         self.show_all("scrapping", "urls_sitemap_html", print_arg=True, random=True)
     
