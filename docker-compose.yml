@@ -1,0 +1,47 @@
+version: '3'
+services:
+
+  app_flask_for_prometheus:
+    build:
+      context: ./API_Flask_for_prometheus
+      dockerfile: Dockerfile
+    ports: #il sea possible de supprimer la redirection de ports
+      - 5000:5000
+    depends_on:
+      - prometheus
+    container_name: app_flask_for_prometheus
+    networks:
+      scrapper:
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      scrapper:
+
+  scrapper:
+    build:
+      context: ./scrappers
+      dockerfile: Dockerfile
+    container_name: scrapper
+    networks:
+      scrapper:
+
+  mongodb:
+    image: mongo
+    container_name: mongo
+    volumes:
+      - MongoDB_scrapping_volume_v2:/data/db
+    networks:
+      scrapper:
+  
+networks:
+  scrapper:
+
+volumes:
+  MongoDB_scrapping_volume_v2:
+    external: true

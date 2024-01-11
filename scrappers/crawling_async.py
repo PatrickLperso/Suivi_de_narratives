@@ -1,9 +1,15 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Dec 13 21:12:08 2023
+Usage:
+  crawling_async.py  <host_name_mongo> <n_cycles> [--crawling_robots=<crawling_robots>]
 
-@author: patrick
+Options:
+  --crawling_robots=<crawling_robots>  Initlisation avec le crawling des robots.txt (0/1)  [default: 0]
+
+Documentation:
+    <n_cycles> nombre de cycles de crawling
 """
+
+
 import numpy as np
 import requests 
 import urllib.parse
@@ -21,6 +27,7 @@ from tqdm.asyncio import tqdm_asyncio
 from tqdm import tqdm
 from pymongo import MongoClient
 import matplotlib.pyplot as plt
+from docopt import docopt
 
 """
 Structure de données de la base de donnée MongoDB / A revoir potentiellement on va devoir tout dénormaliser
@@ -37,24 +44,18 @@ Crée une deuxième table pour stocker toutes les URLS ?
                         {url:xml4, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml2", "depth":2}, #l'url a été scrappée
                         {url:xml5, "has_been_scrapped" : False ,"is_responding": False, "parent_xml" : "xml2", "depth":2}, #l'url n'a pas répondue
                     ]
-    "html_urls": [
-                    {"url": url1 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : True, "text" : ... }  #l'url a été scrappée
-                    {"url": url2 , "xml_source" : xml4 ,"is_responding": True, "has_been_scrapped" : False, "text" : None } #dans cette config l'url n'a pas été testé
-                    {"url": url3 , "xml_source" : xml4 ,"is_responding": False, "has_been_scrapped" : False, "text" : None } #l'url n'a pas répondue
-                    {"url": url3 , "xml_source" : xml4 ,"is_responding": False, "has_been_scrapped" : False, "text" : None } #l'url n'a pas répondue
-                ]
                  
     "robots_txt_parsed" :  {'Disallow': ['/synsearch/', ... ], 'Allow': []} , #probablement à changer pour donner directement une regex de ce type ^(?!.*(video|author|topic)).*$'
     "last_time_scrapped" : hour,
     "is_responding" : False,
-    "robots_txt":
+    "robots_txt": url
 }
 """
 
 class MongoDB_scrap_async():
 
-    def __init__(self, port_forwarding=27017, test=True):
-        self.client=MongoClient('localhost', port=port_forwarding)
+    def __init__(self, host_mongo, port_forwarding=27017, test=True):
+        self.client=MongoClient(host_mongo, port=port_forwarding)
         self.ping_MongoDB()
         
 
@@ -68,7 +69,7 @@ class MongoDB_scrap_async():
         
         if not self.test_collection_in_database_exists(self.database, self.collection_sitemaps, print_arg=False):
             self.insert_data(self.database, self.collection_sitemaps,
-                             MongoDB_scrap_async.create_dictio_data_from_csv("data/medias_per_countries.csv", test=test))
+                             MongoDB_scrap_async.create_dictio_data_from_csv("../data/medias_per_countries.csv", test=test))
         
         self.show_all(self.database, self.collection_sitemaps, print_arg=True, random=True)
     
@@ -626,12 +627,20 @@ class MongoDB_scrap_async():
         
 if __name__=="__main__":
 
-    n_cycles=50  #nombre de cycles de crawling
-    crawling_robots=True #initlisation avec le crawling des robots.txt
+    #n_cycles=50  #nombre de cycles de crawling
+    #crawling_robots=True #initlisation avec le crawling des robots.txt
 
 
-    instance_Mongo=MongoDB_scrap_async(port_forwarding=27017, test=True)
+    
 
+    arguments = docopt(__doc__)
+
+    host_name_mongo=arguments["<host_name_mongo>"]
+    n_cycles=int(arguments["<n_cycles>"])
+    crawling_robots=int(arguments["--crawling_robots"]) # 'est un entier mais 0=>False 1=>True
+    
+
+    instance_Mongo=MongoDB_scrap_async(host_name_mongo, port_forwarding=27017, test=True)
 
     if instance_Mongo.sitemap_is_empty():
         instance_Mongo.scan_robots_txt()
@@ -651,8 +660,6 @@ if __name__=="__main__":
 
     stop = perf_counter()
     print(stop-start)
-    breakpoint()
-    print(1)
     
 
 
