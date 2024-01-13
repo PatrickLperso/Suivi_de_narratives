@@ -7,6 +7,8 @@ app = Flask(__name__)
 """En gros les lables, c'est des sortes de tool tips"""
 
 
+def request_nb_html(client, database, collection_htmls):
+    return client[database][collection_htmls].count_documents({})
 
 def request_metrics(client, database, collection_sitemaps):
     res=list(client[database][collection_sitemaps].aggregate(
@@ -62,6 +64,7 @@ nb_sitemaps_total = Gauge('nb_sitemaps_total', "nb_sitemaps_total")
 nb_requetes = Gauge('nb_requetes', "nb_requetes")
 prct_liens_scrappes = Gauge('prct_liens_scrappes', "prct_liens_scrappes")
 prct_requetes_reussies = Gauge('prct_requetes_reussies', "prct_requetes_reussies")
+nb_html_pages = Gauge('nb_html_pages', "nb_html_pages")
 
 
 
@@ -71,6 +74,8 @@ def hello():
     client=MongoClient('mongodb', port=27017) #attention si on est dans un réseau docker 
     database="scrapping"
     collection_sitemaps="sitemaps"
+    collection_htmls="htmls"
+
     request_metrics_res=request_metrics(client, database, collection_sitemaps)[0]
     
     list_res_metrics=list(request_metrics_res.values())[1:]
@@ -78,6 +83,8 @@ def hello():
 
     for k in range(len(list_gauges)):
         list_gauges[k].set(list_res_metrics[k])
+    
+    nb_html_pages.set(request_nb_html(client, database, collection_htmls))
 
     return generate_latest()
 

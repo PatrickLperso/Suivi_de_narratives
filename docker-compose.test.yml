@@ -5,7 +5,7 @@ services:
     build:
       context: ./API_Flask_for_prometheus
       dockerfile: Dockerfile
-    ports: #il sea possible de supprimer la redirection de ports
+    ports: 
       - 5000:5000
     depends_on:
       - prometheus
@@ -20,6 +20,7 @@ services:
       - 9090:9090
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      -  prometheus_logs:/prometheus
     networks:
       scrapper:
 
@@ -28,12 +29,15 @@ services:
       context: ./scrappers
       dockerfile: Dockerfile
     container_name: scrapper
+    command : [ "python", "crawling_async.py", "mongodb", "0" , "--crawling_robots=0"]
     networks:
       scrapper:
 
   mongodb:
     image: mongo
     container_name: mongo
+    ports:
+      - 27017:27017
     volumes:
       - MongoDB_scrapping_volume_v2:/data/db
     networks:
@@ -44,4 +48,6 @@ networks:
 
 volumes:
   MongoDB_scrapping_volume_v2:
+    external: true
+  prometheus_logs:
     external: true
