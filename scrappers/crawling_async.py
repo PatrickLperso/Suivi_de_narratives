@@ -374,7 +374,6 @@ class MongoDB_scrap_async():
         return results
     
     def list_url_climat(self, list_match="climat", aggregate=True):
-        #========== il va falloir enlever le unwind et modifier la requête ==============
         if aggregate:
                 return list(self.client[self.database][self.collection_htmls].aggregate(
                             [
@@ -639,7 +638,6 @@ if __name__=="__main__":
     n_cycles=int(arguments["<n_cycles>"])
     crawling_robots=int(arguments["--crawling_robots"]) # 'est un entier mais 0=>False 1=>True
     
-
     instance_Mongo=MongoDB_scrap_async(host_name_mongo, port_forwarding=27017, test=True)
 
     if instance_Mongo.sitemap_is_empty():

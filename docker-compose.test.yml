@@ -14,7 +14,7 @@ services:
       scrapper:
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - 9090:9090
@@ -30,6 +30,16 @@ services:
       dockerfile: Dockerfile
     container_name: scrapper
     command : [ "python", "crawling_async.py", "mongodb", "0" , "--crawling_robots=0"]
+    networks:
+      scrapper:
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana   
     networks:
       scrapper:
 
@@ -50,4 +60,6 @@ volumes:
   MongoDB_scrapping_volume_v2:
     external: true
   prometheus_logs:
+    external: true
+  grafana-data:
     external: true
