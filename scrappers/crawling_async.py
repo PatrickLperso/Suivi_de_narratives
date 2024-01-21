@@ -495,7 +495,7 @@ class MongoDB_scrap_async():
         liste_id_bugs=list(map(lambda x:x[1], les_bugs))
 
     def url_waybackmachine(uri_netloc, regex):#inutile mais stock" pour le garder
-
+        #regex=r".*(cop.?[1-2][0-9])|(climat.*)|(.*green)|(.*emission)|(.*oil)|(.*CO2)|(.*co2)|(.pollu).*"
         url_waybackmachine="https://web.archive.org/cdx/search/cdx?url={}/".format(uri_netloc)
         url_waybackmachine+="&fl=original,timestamp&matchType=prefix&collapse=urlkey"
         url_waybackmachine+="&filter=mimetype:text/html&filter=statuscode:200"
