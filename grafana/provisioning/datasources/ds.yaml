@@ -1,0 +1,13 @@
+apiVersion: 1
+datasources:
+  - name: 'Prometheus'
+    type: 'prometheus'
+    url: http://prometheus:9090
+    uid: "b58796f5-f364-44dd-83a0-d23cba3b10e3"
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      timeout: 55
+      timeInterval: 60s
+    editable: true

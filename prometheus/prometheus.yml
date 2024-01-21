@@ -1,5 +1,6 @@
 global:
-  scrape_interval: 40s
+  scrape_interval: 60s
+  scrape_timeout: 40s
 scrape_configs:
   - job_name: 'app'
     metrics_path: '/metrics'

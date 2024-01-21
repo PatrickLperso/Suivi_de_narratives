@@ -17,8 +17,8 @@ services:
     ports:
       - 9090:9090
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      -  prometheus_logs:/prometheus
+      -  ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      -  prometheus-data:/prometheus
     networks:
       scrapper:
 
@@ -28,7 +28,7 @@ services:
       context: ./scrappers
       dockerfile: Dockerfile
     container_name: scrapper
-    command : [ "python", "crawling_async.py", "mongodb", "5" , "--crawling_robots=0"]
+    command : [ "python", "crawling_async.py", "mongodb", "0" , "--crawling_robots=0"]
     networks:
       scrapper:
       
@@ -39,6 +39,7 @@ services:
       - 3000:3000
     volumes:
       - grafana-data:/var/lib/grafana   
+      - ./grafana/dashboards/:/var/lib/grafana/dashboards/
     networks:
       scrapper:
 
@@ -46,7 +47,8 @@ services:
     image: mongo
     container_name: mongo
     volumes:
-      - MongoDB_scrapping_volume_v2:/data/db
+      - mongodb-data:/data/db
+      -  ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       scrapper:
   
@@ -54,9 +56,9 @@ networks:
   scrapper:
 
 volumes:
-  MongoDB_scrapping_volume_v2:
-    external: true
-  prometheus_logs:
-    external: true
+  mongodb-data:
+    driver: local
+  prometheus-data:
+    driver: local
   grafana-data:
-    external: true
+    driver: local

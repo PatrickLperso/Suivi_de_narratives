@@ -5,10 +5,10 @@ services:
     build:
       context: ./API_Flask_for_prometheus
       dockerfile: Dockerfile
-    ports: 
-      - 5000:5000
     depends_on:
       - prometheus
+    ports:
+      - 5000:5000
     container_name: app_flask_for_prometheus
     networks:
       scrapper:
@@ -19,20 +19,21 @@ services:
     ports:
       - 9090:9090
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      -  prometheus_logs:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
     networks:
       scrapper:
+
 
   scrapper:
     build:
       context: ./scrappers
       dockerfile: Dockerfile
     container_name: scrapper
-    command : [ "python", "crawling_async.py", "mongodb", "0" , "--crawling_robots=0"]
+    command : [ "python", "crawling_async.py", "mongodb", "5" , "--crawling_robots=0"]
     networks:
       scrapper:
-  
+      
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -40,6 +41,9 @@ services:
       - 3000:3000
     volumes:
       - grafana-data:/var/lib/grafana   
+      - ./grafana/dashboards/:/var/lib/grafana/dashboards/
+      - ./grafana/provisioning/datasources/ds.yaml:/etc/grafana/provisioning/datasources/ds.yaml
+      - ./grafana/provisioning/dashboards/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
     networks:
       scrapper:
 
@@ -48,8 +52,11 @@ services:
     container_name: mongo
     ports:
       - 27017:27017
+    #limiter la taille du cache MongoDB passage de 30% à 20% de la RAM
+    command : --wiredTigerCacheSizeGB=4
     volumes:
-      - MongoDB_scrapping_volume_v2:/data/db
+      - mongodb-data:/data/db
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       scrapper:
   
@@ -57,9 +64,9 @@ networks:
   scrapper:
 
 volumes:
-  MongoDB_scrapping_volume_v2:
-    external: true
-  prometheus_logs:
-    external: true
+  mongodb-data:
+    driver: local
+  prometheus-data:
+    driver: local
   grafana-data:
-    external: true
+    driver: local

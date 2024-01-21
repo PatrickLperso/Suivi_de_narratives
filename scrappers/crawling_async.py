@@ -69,7 +69,7 @@ class MongoDB_scrap_async():
         
         if not self.test_collection_in_database_exists(self.database, self.collection_sitemaps, print_arg=False):
             self.insert_data(self.database, self.collection_sitemaps,
-                             MongoDB_scrap_async.create_dictio_data_from_csv("../data/medias_per_countries.csv", test=test))
+                             MongoDB_scrap_async.create_dictio_data_from_csv("medias_per_countries.csv", test=test))
         
         self.show_all(self.database, self.collection_sitemaps, print_arg=True, random=True)
     
@@ -228,13 +228,27 @@ class MongoDB_scrap_async():
                                            }, soup.select("sitemap loc")))
                 #ici on a besoin de l'url d'origine et de la profondeur (à voir si on garde ces infos), possibilité de ajouter ces infos après lors du retour
                 
-                url=list(map(lambda x:{"url": x.get_text() ,
+                """
+                pour speed le temps de requetes sur les regex : 
+                https://medium.com/statuscode/how-to-speed-up-mongodb-regex-queries-by-a-factor-of-up-to-10-73995435c606
+                """
+
+                url=list(map(lambda x:{"url": x.get_text(),
+                                       "url_index": x.get_text().lower(),
+                                       "mots_in_url":urllib.parse.urlparse(x.get_text().lower()).path.replace("&", "/").replace("#", "/")\
+                                                                    .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
+                                                                    .strip('/')\
+                                                                    .rstrip('.html').strip('.jpg').split("/"),
                                         "has_been_scrapped" : False,
                                         "id_media": dict_url_depth["id_media"], 
                                         "media_name" : dict_url_depth["media_name"],
                                         "is_responding": True, 
                                         "xml_source" : dict_url_depth["url"] , 
                                         "text" : None }, soup.select("url loc")))
+                
+                #Mettre probablement le texte de l'url dans un array et crée un index dessus 
+
+
                 """
                 url=list(map(lambda x:{"url": x.get_text() ,
                                         "has_been_scrapped" : False,
@@ -279,6 +293,7 @@ class MongoDB_scrap_async():
                                                         "depth":0
                                                     }
                                                         )
+                                
                     except Exception as e: 
                         # on ne casse pas la boucle mais on enregistre l'erreur quand même pour les logs/stats
                         # Il est possible qu'une seule ligne ait été mal renseignée
@@ -609,6 +624,7 @@ class MongoDB_scrap_async():
             #insertion des liens htmls
             if len(resultats[1]):
                 self.client[self.database][self.collection_htmls].insert_many(resultats[1])
+        breakpoint()
 
 
         stop = perf_counter()
