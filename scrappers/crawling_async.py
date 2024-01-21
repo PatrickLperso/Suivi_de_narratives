@@ -28,12 +28,14 @@ from tqdm import tqdm
 from pymongo import MongoClient
 import matplotlib.pyplot as plt
 from docopt import docopt
+import nltk
+from nltk.corpus import stopwords
+nltk.download('stopwords')
 
 """
-Structure de données de la base de donnée MongoDB / A revoir potentiellement on va devoir tout dénormaliser
-Crée une deuxième table pour stocker toutes les URLS ?
+Structure de données de la base de donnée MongoDB :
 
-
+collection : sitemaps
 {
     "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
     "media_location" : ... , "coverage" : ... , "true_country" : ..., 
@@ -50,6 +52,17 @@ Crée une deuxième table pour stocker toutes les URLS ?
     "is_responding" : False,
     "robots_txt": url
 }
+
+collection : htmls
+{
+    "url": ...,
+    "mots_in_url" : [...], #les mots pertienents de l'url sont parsés et stockés pour ensuite définir un index dessus
+    "media_name" :
+    "id_media" : 
+    "has_been_scrapped" : False,
+    "xml_source" :
+    "text": none
+}
 """
 
 class MongoDB_scrap_async():
@@ -64,6 +77,12 @@ class MongoDB_scrap_async():
         self.database="scrapping"
         self.collection_sitemaps="sitemaps"
         self.collection_htmls="htmls"
+
+        # utilisation de set pour la perfomance + uniquement les elements de plus de 3 caractères les autres sont supprimés
+        self.stopwords=set(filter(lambda x:len(x)>=3 and "'" not in x, set(stopwords.words('english')).union(set(["jpg", "wp", "content", "uploads", 
+                                                                  "upload", "html", "image", "video", "placeholder", "rtrmadp","article", "news",
+                                                                  "index", "2560", "1920", "1080", "720", "1280", "250", "0x0", "img"]))))
+
 
         self.show_all(self.database, self.collection_sitemaps)
         
@@ -210,35 +229,37 @@ class MongoDB_scrap_async():
                                     axis=1))
         return list_dictios
     
-    async def parser_xml(session, dict_url_depth):
-        #================ il faudrait rajouter media name et url root ======================
+    async def parser_xml(self,session, dict_url_depth):
         sitemap, url, =[], []
         has_been_scrapped=False
         is_responding=False
         error=False
+
         try:
             async with session.get(dict_url_depth["url"]) as response:
                 html = await response.text()
-                soup= BeautifulSoup(html, features="xml")
+                soup= BeautifulSoup(html, features="lxml") #attention xml c'est de la merde 
+
+                #Récupération des sitemaps
                 sitemap=list(map(lambda x:{"url":x.get_text(),
                                            "has_been_scrapped" : False ,
                                            "is_responding": True,
                                            "parent_xml":dict_url_depth["url"], 
                                            "depth":dict_url_depth["depth"]+1
                                            }, soup.select("sitemap loc")))
-                #ici on a besoin de l'url d'origine et de la profondeur (à voir si on garde ces infos), possibilité de ajouter ces infos après lors du retour
-                
                 """
-                pour speed le temps de requetes sur les regex : 
+                Pour accélérer le temps des requêtes sur les regex : 
                 https://medium.com/statuscode/how-to-speed-up-mongodb-regex-queries-by-a-factor-of-up-to-10-73995435c606
+                Au final, on ne rentre pas dans ce cas, nos données sont suffisament bien parsées, un simple index sur l'array mots_in_url
+                suffit et est très performant niveau requétage
                 """
 
+                #Récupération des urls + mise en forme de données textuelles
                 url=list(map(lambda x:{"url": x.get_text(),
-                                       "url_index": x.get_text().lower(),
-                                       "mots_in_url":urllib.parse.urlparse(x.get_text().lower()).path.replace("&", "/").replace("#", "/")\
-                                                                    .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
-                                                                    .strip('/')\
-                                                                    .rstrip('.html').strip('.jpg').split("/"),
+                                       "mots_in_url":list(filter(lambda x:len(x)>=3 and x not in self.stopwords,urllib.parse.urlparse(x.get_text().lower())\
+                                                                .path.replace("&", "/").replace("#", "/").replace(",", "/")\
+                                                                .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
+                                                                .replace(".", "/").split("/"))),
                                         "has_been_scrapped" : False,
                                         "id_media": dict_url_depth["id_media"], 
                                         "media_name" : dict_url_depth["media_name"],
@@ -246,19 +267,6 @@ class MongoDB_scrap_async():
                                         "xml_source" : dict_url_depth["url"] , 
                                         "text" : None }, soup.select("url loc")))
                 
-                #Mettre probablement le texte de l'url dans un array et crée un index dessus 
-
-
-                """
-                url=list(map(lambda x:{"url": x.get_text() ,
-                                        "has_been_scrapped" : False,
-                                        "is_responding": True, 
-                                        "xml_source" : dict_url_depth["url"] , 
-                                        "text" : None }, list(filter(lambda x:"climat" in x.get_text() , soup.select("url loc")))))"""
-                
-                
-                
-
                 has_been_scrapped=True
                 is_responding=True
         except Exception as e:
@@ -588,7 +596,7 @@ class MongoDB_scrap_async():
         liste_id_site=list(map(lambda x:x["id_media"], sitemaps_unscraped))
 
         
-        results_sitemaps=self.scan_urls(liste_url_depth_to_scrap, MongoDB_scrap_async.parser_xml, self.timeout_xml)
+        results_sitemaps=self.scan_urls(liste_url_depth_to_scrap, self.parser_xml, self.timeout_xml)
         print("Nb Exceptions : {}".format(len(list(filter(lambda x:x[4], results_sitemaps)))))
         print("Nb xml Empty : {}".format(len(list(filter(lambda x:len(x[0])==0, results_sitemaps)))))
         print("Nb html Empty : {}".format(len(list(filter(lambda x:len(x[1])==0, results_sitemaps)))))
@@ -624,7 +632,7 @@ class MongoDB_scrap_async():
             #insertion des liens htmls
             if len(resultats[1]):
                 self.client[self.database][self.collection_htmls].insert_many(resultats[1])
-        breakpoint()
+        
 
 
         stop = perf_counter()

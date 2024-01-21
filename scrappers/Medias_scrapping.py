@@ -11,6 +11,7 @@ import pandas as pd
 import urllib3
 urllib3.disable_warnings()
 
+
 def url_pays():
     url = "https://www.abyznewslinks.com/allco.htm"
     requesting = requests.get(url,  verify=False)
@@ -116,11 +117,15 @@ def country(df_pays_url):
     
     return list_fail,list_data
 
+"""
+Worst site ever to scrap => les données ne sont pas toujours bien normalisées
+Les fonctions de parsing sont donc assez complxes pour être le plus robustes possibles
+"""
+
+
+
 
 df_pays=url_pays()
-
-
-
 list_fail,list_data=country(df_pays)
 df_total=pd.concat(list_data, axis=0)
 df_total.to_csv("../data/medias_per_coutries.csv")
