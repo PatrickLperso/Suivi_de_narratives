@@ -50,9 +50,11 @@ Or dans ces fichiers se trouvent régulièrement des urls qui sont les index du 
 Notre scrapper va récursivement récupérées ces sitemaps et trouver les liens html contenus dans ces fichiers.
 Toutes ces données sont ensuite mises dans la base de donnée MongoDB.
 
-Voici un exemple avec  https://www.lemonde.fr/:
-Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt
+### Exemple avec lemonde.fr
+Nous allons montrer le fcontionnement du scrapper avec le site lemonde.fr.__
+Note : Il n'a pas été scrappé.
 
+Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt__
 Il contient des sitemaps :
 ```xml
 Sitemap: https://www.lemonde.fr/sitemap_news.xml
@@ -93,33 +95,39 @@ Les données de date de publication, de l'url sont récupérées, les mots dans 
 Il en résulte de données enregistrées sous ce format dans une collection de la base de données mongoDB.
 ```json
 {
-    "url": ...,
-    "mots_in_url" : [...], #les mots pertienents de l'url sont parsés et stockés pour ensuite définir un index dessus
-    "media_name" :
-    "id_media" : 
-    "has_been_scrapped" : False,
-    "xml_source" :
-    "date": #la date est la date de modification autrement dit pas nécessairement (souvent le cas) la date de publication
-    "text": none
+    "url": "https://www.lemonde.fr/international/article/2024/01/25/guerre-en-ukraine-questions-apres-le-crash-d-un-avion-russe_6212827_3210.html",
+    "mots_in_url" : ["international","2024", "01", "25", "guerre", "ukraine", "questions", "apres", "crash", "avion", "russe", "6212827", "3210"], 
+    "media_name" : "lemonde.fr",
+    "id_media" : 1245,
+    "has_been_scrapped" : true,
+    "xml_source" : "https://www.lemonde.fr/sitemap_news.xml",
+    "date": "2024-01-25T04:30:07+01:00",
+    "text": null,
 }
 ```
+Note : Le parsing des Urls sous cette forme permet de faire des index et donc des requêtes très rapides.
+Des tests très concluant avec 20 millions de données sont été efectués.
+Ces indexes ne sont pas encore automatiquement crées. 
+
+
 Une deuxième collection est mise à jour en parralèle pour rajouter les nouveaux sitemaps et mettre à jour ceux qui ont été scrappés.
-Les données sous pour chaque media sous cette forme :
+Les informations contenues dans le robot.txt y sont aussi stockées.
+Les données sont sous cette forme : 
 ```json
 {
-    "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
-    "media_location" : ... , "coverage" : ... , "true_country" : ..., 
+    "site_web_url": "https://www.lemonde.fr/", "media_name": "lemonde.fr" , "media_coverage" :  "" ,  "media_diffusion" : "" , 
+    "media_location" : "France" , "coverage" : "national" , "true_country" : "FRance", 
     "sitemaps_xml": [ 
-                        {url:xml1,  "has_been_scrapped" : True ,"is_responding": True,  "parent_xml" : robots_txt_url, "depth":0}, #l'url a été scrappée
-                        {url:xml2, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, #l'url a été scrappée
-                        {url:xml3, "has_been_scrapped" : False ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, #dans cette config l'url n'a pas été testé
-                        {url:xml4, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml2", "depth":2}, #l'url a été scrappée
-                        {url:xml5, "has_been_scrapped" : False ,"is_responding": False, "parent_xml" : "xml2", "depth":2}, #l'url n'a pas répondue
-                    ]
-    "robots_txt_parsed" :  {'Disallow': ['/synsearch/', ... ], 'Allow': []} , #probablement à changer pour donner directement une regex de ce type ^(?!.*(video|author|topic)).*$'
-    "last_time_scrapped" : hour,
-    "is_responding" : False,
-    "robots_txt": url
+                        {"url":"xml1",  "has_been_scrapped" : true ,"is_responding": true,  "parent_xml" : "robots.txt", "depth":0},
+                        {"url":"xml2", "has_been_scrapped" : true ,"is_responding": true, "parent_xml" : "xml1", "depth":1}, 
+                        {"url":"xml3", "has_been_scrapped" : false ,"is_responding": true, "parent_xml" : "xml1", "depth":1}, 
+                        {"url":"xml4", "has_been_scrapped" : true ,"is_responding": true, "parent_xml" : "xml2", "depth":2}, 
+                        {"url":"xml5", "has_been_scrapped" : false ,"is_responding": false, "parent_xml" : "xml2", "depth":2}, 
+                    ],
+    "robots_txt_parsed" :  {"Disallow": ["/synsearch/", "..." ], "Allow": []} ,
+    "last_time_scrapped" : "",
+    "is_responding" : true,
+    "robots_txt": "..."
 }
 ```
 
