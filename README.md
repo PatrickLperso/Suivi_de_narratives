@@ -89,7 +89,39 @@ On y découvre en poursuivant le parcours des sitemaps les articles du journal L
 </url>
 ```
 
-
+Les données de date de publication, de l'url sont récupérées, les mots dans l'url sont parsés.
+Il en résulte de données enregistrées sous ce format dans une collection de la base de données mongoDB.
+```json
+{
+    "url": ...,
+    "mots_in_url" : [...], #les mots pertienents de l'url sont parsés et stockés pour ensuite définir un index dessus
+    "media_name" :
+    "id_media" : 
+    "has_been_scrapped" : False,
+    "xml_source" :
+    "date": #la date est la date de modification autrement dit pas nécessairement (souvent le cas) la date de publication
+    "text": none
+}
+```
+Une deuxième collection est mise à jour en parralèle pour rajouter les nouveaux sitemaps et mettre à jour ceux qui ont été scrappés.
+Les données sous pour chaque media sous cette forme :
+```json
+{
+    "site_web_url": ..., "media_name": ... , "media_coverage" :  ... ,  "media_diffusion" : ... , 
+    "media_location" : ... , "coverage" : ... , "true_country" : ..., 
+    "sitemaps_xml": [ 
+                        {url:xml1,  "has_been_scrapped" : True ,"is_responding": True,  "parent_xml" : robots_txt_url, "depth":0}, #l'url a été scrappée
+                        {url:xml2, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, #l'url a été scrappée
+                        {url:xml3, "has_been_scrapped" : False ,"is_responding": True, "parent_xml" : "xml1", "depth":1}, #dans cette config l'url n'a pas été testé
+                        {url:xml4, "has_been_scrapped" : True ,"is_responding": True, "parent_xml" : "xml2", "depth":2}, #l'url a été scrappée
+                        {url:xml5, "has_been_scrapped" : False ,"is_responding": False, "parent_xml" : "xml2", "depth":2}, #l'url n'a pas répondue
+                    ]
+    "robots_txt_parsed" :  {'Disallow': ['/synsearch/', ... ], 'Allow': []} , #probablement à changer pour donner directement une regex de ce type ^(?!.*(video|author|topic)).*$'
+    "last_time_scrapped" : hour,
+    "is_responding" : False,
+    "robots_txt": url
+}
+```
 
 ### Liste des fichiers
 
