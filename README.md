@@ -31,10 +31,10 @@ Attention, si le nombre de cycles de scrapping définit est important, il faudra
 ### DashBoard & Grafana
 
 Grafana est accessible pour monitorer le scrapper sur l'addresse :  http://localhost:3000
-<img src="images/grafana.png" width="500"/>
+<img src="images/grafana.png" width="700"/>
 
 Un DashBoard est disponible sur l'addresse : http://localhost:8000/
-<img src="images/dashboard.png" width="500"/>
+<img src="images/dashboard.png" width="700"/>
 
 ### Choix d'architecture
 
