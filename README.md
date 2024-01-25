@@ -43,6 +43,54 @@ Ces données ne sont donc pas perdues si la machine s'éteint car elles sont sto
 Il est donc possible d'arrêter le scrapping et le reprendre plus tard.
 Enfin, une api flask, prometheus et grafana sont déployés pour monitorer le scrapper.
 
+### Fonctionnement du scrapper
+
+Le scrapper scanne un liste de médias américains en allant regarder ce qui se trouve dans chaque robots.txt.
+Or dans ces fichiers se trouvent régulièrement des urls qui sont les index du site (des urls conteant sitemap).
+Notre scrapper va récursivement récupérées ces sitemaps et trouver les liens html contenus dans ces fichiers.
+Toutes ces données sont ensuite mises dans la base de donnée MongoDB.
+
+Voici un exemple avec Exemple pour https://www.lemonde.fr/:
+
+Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt
+
+Il contient des sitemaps :
+
+Sitemap: https://www.lemonde.fr/sitemap_news.xml
+Sitemap: https://www.lemonde.fr/sitemap_index.xml
+Sitemap: https://www.lemonde.fr/en/sitemap_news.xml
+Sitemap: https://www.lemonde.fr/en/sitemap_index.xml
+
+On y découvre en poursuivant le parcours les article du journal LeMonde :
+```xml
+<url>
+    <loc>
+    https://www.lemonde.fr/international/article/2024/01/25/guerre-en-ukraine-questions-apres-le-crash-d-un-avion-russe_6212827_3210.html
+    </loc>
+    <lastmod>2024-01-25T04:30:07+01:00</lastmod>
+    <news:news>
+        <news:publication_date>2024-01-25T04:30:07+01:00</news:publication_date>
+        <news:title>
+        Guerre en Ukraine : questions après le crash d’un avion russe
+        </news:title>
+        <news:publication>
+        <news:name>Le Monde</news:name>
+        <news:language>fr</news:language>
+        </news:publication>
+    </news:news>
+    <image:image>
+        <image:loc>
+            https://img.lemde.fr/2024/01/24/422/0/5105/2552/1440/720/60/0/55d3ce5_2024-01-24t161100z-883304909-rc2do5a7czzq-rtrmadp-3-ukraine-crisis-belgorod-airplane.JPG
+        </image:loc>
+        <image:caption>
+            Des policiers russes montent la garde sur la route menant au site du crash de l’avion de transport militaire russe IL-76, à Yablonov, dans la région de Belgorod (Russie), le 24 janvier 2024.
+        </image:caption>
+    </image:image>
+</url>
+```
+
+
+
 ### Liste des fichiers
 
 /api_flask contient l'api flask utile pour prometheus
