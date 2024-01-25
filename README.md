@@ -56,10 +56,12 @@ Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt
 
 Il contient des sitemaps :
 
+```xml
 Sitemap: https://www.lemonde.fr/sitemap_news.xml
 Sitemap: https://www.lemonde.fr/sitemap_index.xml
 Sitemap: https://www.lemonde.fr/en/sitemap_news.xml
 Sitemap: https://www.lemonde.fr/en/sitemap_index.xml
+```
 
 On y découvre en poursuivant le parcours les article du journal LeMonde :
 ```xml
