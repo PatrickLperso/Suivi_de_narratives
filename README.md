@@ -58,8 +58,8 @@ Notre scrapper va récursivement récupérées ces sitemaps et trouver les liens
 Toutes ces données sont ensuite mises dans la base de donnée MongoDB.
 
 ### Exemple avec lemonde.fr
-Nous allons montrer le fcontionnement du scrapper avec le site lemonde.fr.__
-Note : Il n'a pas été scrappé.
+Nous allons montrer le fonctionnement du crawler avec le site lemonde.fr.
+Note : Il n'a pas été crawler.
 
 Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt__
 Il contient des sitemaps :
