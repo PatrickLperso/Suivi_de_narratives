@@ -1,7 +1,14 @@
 # WebScrapping
-## Ceci est le repos du projet de WebScrapping 
+### Le Projet
 
-L'application est en réalité plusieurs services fonctionnant dans des dockers.
+Le projet consiste à développer un outil permettant de monitorer ce qu'il se dit à propos d'un sujet.
+On peut ainsi rechercher le terme climat et voir à quel moment dans les médias la question du climat a été abordé, 
+quels ont été les termes employés, qui en a parlé le plus, etc ...
+
+Etant donné le caractère assez universel de cette capacité, il est possible de faire des requêtes sur absolument n'importe quel sujet.
+
+
+L'application développée est en réalité plusieurs services fonctionnant dans des dockers.
 Cette option permet une conteneurisation absolue et une gestion des dépendances.
 
 ### Lancer le projet
@@ -106,7 +113,7 @@ Il en résulte de données enregistrées sous ce format dans une collection de l
 }
 ```
 Note : Le parsing des Urls sous cette forme permet de faire des index et donc des requêtes très rapides.
-Des tests très concluant avec 20 millions de données sont été efectués.
+Des tests très concluants avec 20 millions de données ont été efectués.
 Ces indexes ne sont pas encore automatiquement crées. 
 
 
