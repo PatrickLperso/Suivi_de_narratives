@@ -6,7 +6,7 @@ On peut ainsi rechercher le terme climat et voir à quel moment dans les médias
 quels ont été les termes employés, qui en a parlé le plus, etc ...
 
 Etant donné le caractère assez universel de cette capacité, il est possible de faire des requêtes sur absolument n'importe quel sujet.
-
+<img src="images/elon_musk.png" width="1000"/>
 
 L'application développée est en réalité plusieurs services fonctionnant dans des dockers.
 Cette option permet une conteneurisation absolue et une gestion des dépendances.
