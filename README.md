@@ -1,77 +1,67 @@
 # WebScrapping
 ## Ceci est le repos du projet de WebScrapping 
 
+L'application est en réalité plusieurs services fonctionnant dans des dockers.
+Cette option permet une conteneurisation absolue et une gestion des dépendances.
+
+### Lancer le projet
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d --build
+``` 
+L'ensemble des installations va être automatiquement lancé. Enfin, le scrapper ainsi que l'ensemble des services seront lancés.
+
+
+### Définir le nombre de cycles de crawling 
+
+Le nombre de cycle de crawling est actuellment à 10 mais il peut-être modifié dans le fichier docker-compose.prod.yml.
+Il est possible de mettre 0 si on souhaite uniquement regarder les logs grafana ainsi que le dashboard.
+```yaml
+  scrapper:
+    build:
+      context: ./scrappers
+      dockerfile: Dockerfile
+    container_name: scrapper
+    command : [ "python", "crawling_async.py", "mongodb", "10" , "--crawling_robots=0"]
+    networks:
+      scrapper:
+```
+Attention, si le nombre de cycles de scrapping définit est important, il faudra penser à indexer la base de données Mongodb pour pouvoir faire des requêtes dans le dashboard. Enfin, le scrapper pourra prendre du temps avant de finir l'ensemble de ces cycles.
+
+### DashBoard & Grafana
+
+Grafana est accessible pour monitorer le scrapper sur l'addresse :  http://localhost:3000
+<img src="images/grafana.png" width="500"/>
+Un DashBoard est disponible sur l'addresse : http://localhost:8000/
+<img src="images/dashboard.png" width="500"/>
+
+### Choix d'architecture
+
+Les données scrappées sont stockées dans une base de données MongoDB. Pour être plus précis, l'ensemble des données est stockée dans un volume docker.
+Ces données ne sont donc pas perdues si la machine s'éteint car elles sont stockées sur la machine. C'est aussi le cas pour les données concerant Prometheus et grafana.
+Il est donc possible d'arrêter le scrapping et le reprendre plus tard.
+Enfin, une api flask, prometheus et grafana sont déployés pour monitorer le scrapper.
 
 ### Liste des fichiers
 
-20231212.export.CSV contient le fichier 2023 de GDELT 1.0, il a été utilisé pour construire un BDD de médias (code dans get_url_list.py)
+/api_flask contient l'api flask utile pour prometheus
+/dash_app contient le dashboard de DataViz
+/grafana contient les fichiers de configuation pour grafana 
+/scrappers contient les scrappers
 
-Analysis_links.ipynb est un notebook pour analyser les robots.txt et sitemap récupérées des donénes GDELT
+### Commandes utiles
 
-DataViz_Medias_scrapping.ipynb est un notebook de DataViz des données scrappées du site https://www.abyznewslinks.com/allco.htm
-
-Medias_scapping.py pemet le scrapping de https://www.abyznewslinks.com/allco.htm
-
-get_url.list.py contient les fonctions de scan asynchrones d'URL 
-
-medias_per_countries.csv contient les données scrappées de https://www.abyznewslinks.com/allco.htm
-
-url_500_11.json contient les robots.txt, et sitemap.xml des données GDELT
-
-### venv pour crawling_async.py
-
-Créer un venv, activation , et installation des paquets pip. Le requirement est commun au .py et .ipynb
-```bash 
-python3 -m venv venv
-source env/bin/activate
-pip install -r requirements_async_crawl.txt
-```
-
-
-### BDD MongoDB 
-
-Crée un docker volume
+Arrêter les services
 ```bash
-docker volume create MongoDB_scrapping_volume
+docker-compose -f docker-compose.prod.yml down
 ```
 
-Lance le conteneur docker 
+Voir l'état des services
 ```bash
-docker run -d -p 27017:27017 -v MongoDB_scrapping_volume:/data/db --name Mongodb_scrapping mongo:latest
+docker-compose -f docker-compose.prod.yml ps
 ```
-Cette commande lance une image mongo en mode détache (-d) avec un forwarding du port 27017 sur le locahost (-p 27017:27017)
-Le conteneur porte un nom en l'occurence Mongodb_scrapping
 
-Pour arrêter et supprimer le conteneur Mongodb_scrapping en cours d'éxecution, le docker volume est persistant
+Voir les logs du scrapper
 ```bash
-docker ps | grep Mongodb_scrapping | awk '{print $1}' | xargs docker stop | xargs docker rm
+docker-compose -f docker-compose.prod.yml logs scrapper --follow
 ```
-
-
-
-### Executer code
-Si le docker Mongo a été lancée corrrecement et que les installations ont été faites dans le venv
-Il n'y a plus qu'à lancer l'importation des données dans la BDD MongoDB 
-
-Pour le premier run, il faudra scrapper les robots.txt 
-```python
-if __name__=="__main__":
-
-    n_cycles=50  #nombre de cycles de crawling
-    crawling_robots=True #initlisation avec le crawling des robots.txt
-```
-
-Ensuite, ce ne sera plus nécessaire, la variable crawling_robots sera mise à False
-```python
-if __name__=="__main__":
-
-    n_cycles=50  #nombre de cycles de crawling
-    crawling_robots=False #initlisation avec le crawling des robots.txt
-```
-
-Lancer le scraper 
-```bash
-python crawling_async.py
-```
-
-
