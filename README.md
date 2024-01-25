@@ -33,15 +33,15 @@ Il est possible de mettre 0 si on souhaite uniquement regarder les logs grafana 
     networks:
       scrapper:
 ```
-Attention, si le nombre de cycles de scrapping définit est important, il faudra penser à indexer la base de données Mongodb pour pouvoir faire des requêtes dans le dashboard. Enfin, le scrapper pourra prendre du temps avant de finir l'ensemble de ces cycles.
+Attention, si le nombre de cycles de scrapping définit est important, il faudra penser à indexer la base de données Mongodb pour pouvoir faire des requêtes dans le dashboard. Enfin, le crawler pourra prendre du temps avant de finir l'ensemble de ces cycles.
 
 ### DashBoard & Grafana
 
 Grafana est accessible pour monitorer le scrapper sur l'addresse :  http://localhost:3000
-<img src="images/grafana.png" width="700"/>
+<img src="images/grafana.png" width="900"/>
 
 Un DashBoard est disponible sur l'addresse : http://localhost:8000/
-<img src="images/dashboard.png" width="700"/>
+<img src="images/dashboard.png" width="900"/>
 
 ### Choix d'architecture
 
@@ -52,9 +52,9 @@ Enfin, une api flask, prometheus et grafana sont déployés pour monitorer le sc
 
 ### Fonctionnement du scrapper
 
-Le scrapper scanne un liste de médias américains en allant regarder ce qui se trouve dans chaque robots.txt.
+Le crawler scanne un liste de médias américains en allant regarder ce qui se trouve dans chaque robots.txt.
 Or dans ces fichiers se trouvent régulièrement des urls qui sont les index du site (des urls conteant sitemap).
-Notre scrapper va récursivement récupérées ces sitemaps et trouver les liens html contenus dans ces fichiers.
+Notre crawler va récursivement récupérées ces sitemaps et trouver les liens html contenus dans ces fichiers.
 Toutes ces données sont ensuite mises dans la base de donnée MongoDB.
 
 ### Exemple avec lemonde.fr
