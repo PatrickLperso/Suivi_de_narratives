@@ -1,9 +1,9 @@
 version: '3'
 services:
 
-  app_flask_for_prometheus:
+  api_flask:
     build:
-      context: ./API_Flask_for_prometheus
+      context: ./api_flask
       dockerfile: Dockerfile
     depends_on:
       - prometheus

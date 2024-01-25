@@ -1,15 +1,26 @@
 version: '3'
 services:
 
-  app_flask_for_prometheus:
+  api_flask:
     build:
-      context: ./API_Flask_for_prometheus
+      context: ./api_flask
       dockerfile: Dockerfile
     depends_on:
       - prometheus
-    container_name: app_flask_for_prometheus
+    container_name: api_flask
     networks:
       scrapper:
+
+  dashboard:
+    build:
+      context: ./dash_app
+      dockerfile: Dockerfile
+    container_name: dashboard
+    ports:
+      - 8000:8000
+    networks:
+      scrapper:
+
 
   prometheus:
     image: prom/prometheus:latest
@@ -19,6 +30,7 @@ services:
       - prometheus-data:/prometheus
     networks:
       scrapper:
+    
 
   scrapper:
     build:

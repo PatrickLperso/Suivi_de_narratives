@@ -9,7 +9,6 @@ Documentation:
     <n_cycles> nombre de cycles de crawling
 """
 
-
 import numpy as np
 import requests 
 import urllib.parse
@@ -22,6 +21,8 @@ from bs4 import BeautifulSoup
 import re
 import aiohttp
 import json
+from dateutil import parser
+import datetime
 from pprint import pprint, pformat
 from tqdm.asyncio import tqdm_asyncio
 from tqdm import tqdm
@@ -29,8 +30,10 @@ from pymongo import MongoClient
 import matplotlib.pyplot as plt
 from docopt import docopt
 import nltk
+import os
 from nltk.corpus import stopwords
 nltk.download('stopwords')
+import dateutil
 
 """
 Structure de données de la base de donnée MongoDB :
@@ -61,6 +64,7 @@ collection : htmls
     "id_media" : 
     "has_been_scrapped" : False,
     "xml_source" :
+    "date": #la date est la date de modification autrement dit pas nécessairement (souvent le cas) la date de publication
     "text": none
 }
 """
@@ -79,13 +83,13 @@ class MongoDB_scrap_async():
         self.collection_htmls="htmls"
 
         # utilisation de set pour la perfomance + uniquement les elements de plus de 3 caractères les autres sont supprimés
-        self.stopwords=set(filter(lambda x:len(x)>=3 and "'" not in x, set(stopwords.words('english')).union(set(["jpg", "wp", "content", "uploads", 
-                                                                  "upload", "html", "image", "video", "placeholder", "rtrmadp","article", "news",
-                                                                  "index", "2560", "1920", "1080", "720", "1280", "250", "0x0", "img"]))))
+        self.stopwords=set(filter(lambda x:len(x)>=3 and "'" not in x, set(stopwords.words('english')).union(set(["jpg", "wp", "content", "uploads", "htm",
+                                                                  "upload", "html", "image", "video", "placeholder", "rtrmadp","articles", "article", "news","stories",
+                                                                  "index", "2560", "1920", "1080", "720", "1280", "250", "0x0", "img", "tag", "opinion"]))))
 
 
         self.show_all(self.database, self.collection_sitemaps)
-        
+        print(os.getcwd())
         if not self.test_collection_in_database_exists(self.database, self.collection_sitemaps, print_arg=False):
             self.insert_data(self.database, self.collection_sitemaps,
                              MongoDB_scrap_async.create_dictio_data_from_csv("medias_per_countries.csv", test=test))
@@ -253,27 +257,85 @@ class MongoDB_scrap_async():
                 Au final, on ne rentre pas dans ce cas, nos données sont suffisament bien parsées, un simple index sur l'array mots_in_url
                 suffit et est très performant niveau requétage
                 """
+                #breakpoint()
 
-                #Récupération des urls + mise en forme de données textuelles
-                url=list(map(lambda x:{"url": x.get_text(),
-                                       "mots_in_url":list(filter(lambda x:len(x)>=3 and x not in self.stopwords,urllib.parse.urlparse(x.get_text().lower())\
-                                                                .path.replace("&", "/").replace("#", "/").replace(",", "/")\
-                                                                .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
-                                                                .replace(".", "/").split("/"))),
-                                        "has_been_scrapped" : False,
-                                        "id_media": dict_url_depth["id_media"], 
-                                        "media_name" : dict_url_depth["media_name"],
-                                        "is_responding": True, 
-                                        "xml_source" : dict_url_depth["url"] , 
-                                        "text" : None }, soup.select("url loc")))
+                date_tag=None
+                for k in range(2):
+                    firstsoup=soup.select("url:nth-child({})".format(k+1))
+                    if len(firstsoup):
+                        firstsoup=firstsoup[0]
+                        tags=[tag.name for tag in firstsoup.find_all()]
+                        if "news\:publication_date" in tags:
+                            date_tag="news\:publication_date"
+                            break
+                        elif "n\:publication_date" in tags:
+                            date_tag="n\:publication_date"
+                            break
+                        elif "lastmod" in tags:
+                            date_tag="lastmod"
+                            break
+                    
                 
+
+                #Récupération des urls + mise en forme de données textuelles avec la date si disponible
+                """
+                url=list(map(lambda x:{"url": x.get_text(),
+                                    "mots_in_url":list(filter(lambda x:len(x)>=3 and x not in self.stopwords,urllib.parse.urlparse(x.get_text().lower())\
+                                                            .path.replace("&", "/").replace("#", "/").replace(",", "/")\
+                                                            .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
+                                                            .replace(".", "/").split("/"))),
+                                    "has_been_scrapped" : False,
+                                    "id_media": dict_url_depth["id_media"], 
+                                    "media_name" : dict_url_depth["media_name"],
+                                    "is_responding": True, 
+                                    "xml_source" : dict_url_depth["url"] , 
+                                    "text" : None }, soup.select("url loc")))
+                """
+
+                if date_tag:
+                    url=list(map(lambda x:{"url": x[0],
+                                                "mots_in_url":list(filter(lambda mot:len(mot)>=3  and mot not in self.stopwords,urllib.parse.urlparse(x[0].lower())\
+                                                                        .path.replace("&", "/").replace("#", "/").replace(",", "/")\
+                                                                        .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
+                                                                        .replace(".", "/").split("/"))),
+                                                "has_been_scrapped" : False,
+                                                "id_media": dict_url_depth["id_media"], 
+                                                "media_name" : dict_url_depth["media_name"],
+                                                "is_responding": True, 
+                                                "xml_source" : dict_url_depth["url"] , 
+                                                "date_day":parser.parse(x[1]).replace(hour=0, minute=0, second=0, microsecond=0) if x[1] else None, #datetime.datetime.strptime(parser.parse(x[1]).strftime("%Y-%m-%d"), "%Y-%m-%d") if x[1] else None,
+                                                "date":parser.parse(x[1]).replace(microsecond=0).replace(second=0) if x[1] else None,
+                                                "text" : None }, 
+                                                list(map(lambda x:[x.select("loc")[0].get_text(), 
+                                                                            x.select("{}".format(date_tag))[0].get_text() if len(x.select("{}".format(date_tag))) else None],
+                                            soup.select("url")))))
+                else:
+                    url=list(map(lambda x:{"url": x[0],
+                            "mots_in_url":list(filter(lambda mot:len(mot)>=3  and mot not in self.stopwords,urllib.parse.urlparse(x[0].lower())\
+                                                    .path.replace("&", "/").replace("#", "/").replace(",", "/")\
+                                                    .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
+                                                    .replace(".", "/").split("/"))),
+                            "has_been_scrapped" : False,
+                            "id_media": dict_url_depth["id_media"], 
+                            "media_name" : dict_url_depth["media_name"],
+                            "is_responding": True, 
+                            "xml_source" : dict_url_depth["url"] , 
+                            "date_day":None,
+                            "date":None,
+                            "text" : None }, 
+                            list(map(lambda x:[x.select("loc")[0].get_text(), 
+                                                        None],
+                        soup.select("url")))))
+                    
+                
+                #breakpoint()
+                                
                 has_been_scrapped=True
                 is_responding=True
         except Exception as e:
             error=str(e)
         finally:
-            return sitemap, url, has_been_scrapped, is_responding, error
-    
+            return sitemap, url, has_been_scrapped, is_responding, error    
 
     async def parser_robots(session, url):
         res={"user_agent_rules":{"Disallow":[], "Allow":[]}, "sitemaps_xml": [], "is_responding":False}
@@ -591,12 +653,12 @@ class MongoDB_scrap_async():
                                                     "depth":x["sitemaps_xml"]["depth"],
                                                     "id_media":x["id_media"],
                                                     "media_name":x["media_name"]}, sitemaps_unscraped))
-        
+
         
         liste_id_site=list(map(lambda x:x["id_media"], sitemaps_unscraped))
 
-        
         results_sitemaps=self.scan_urls(liste_url_depth_to_scrap, self.parser_xml, self.timeout_xml)
+
         print("Nb Exceptions : {}".format(len(list(filter(lambda x:x[4], results_sitemaps)))))
         print("Nb xml Empty : {}".format(len(list(filter(lambda x:len(x[0])==0, results_sitemaps)))))
         print("Nb html Empty : {}".format(len(list(filter(lambda x:len(x[1])==0, results_sitemaps)))))
@@ -653,15 +715,27 @@ if __name__=="__main__":
     #n_cycles=50  #nombre de cycles de crawling
     #crawling_robots=True #initlisation avec le crawling des robots.txt
 
+    """
+    test=True
 
-    
+    if test:
+        host_name_mongo="localhost"
+        n_cycles=10
+        crawling_robots=0
+        print("========== Ceci est une version de test attention ===========")
+        anwser=input("Voulez-vous continuer [Y/n]?")
+        if anwser=="Y":
+            pass
+        else:
+            raise Exception("Arrêt de la version de test")  
+
+    else"""
 
     arguments = docopt(__doc__)
-
     host_name_mongo=arguments["<host_name_mongo>"]
     n_cycles=int(arguments["<n_cycles>"])
-    crawling_robots=int(arguments["--crawling_robots"]) # 'est un entier mais 0=>False 1=>True
-    
+    crawling_robots=int(arguments["--crawling_robots"]) 
+
     instance_Mongo=MongoDB_scrap_async(host_name_mongo, port_forwarding=27017, test=True)
 
     if instance_Mongo.sitemap_is_empty():

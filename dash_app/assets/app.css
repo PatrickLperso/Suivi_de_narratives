@@ -1,0 +1,9 @@
+.offset_vertical{
+    margin-top:10px;
+  }
+
+
+.center_horinzontal{
+    display: flex;
+    justify-content: center
+    }
