@@ -41,7 +41,7 @@ Grafana est accessible pour monitorer le scrapper sur l'addresse :  http://local
 <img src="images/grafana.png" width="900"/>
 
 Un DashBoard est disponible sur l'addresse : http://localhost:8000/
-<img src="images/dashboard.png" width="900"/>
+<img src="images/dashboard.png" width="1000"/>
 
 ### Choix d'architecture
 
@@ -116,7 +116,7 @@ Note : Le parsing des Urls sous cette forme permet de faire des index et donc de
 Des tests très concluants avec 20 millions de données ont été effectués : Une requête renvoyant 400000 à 500000 documents à été testé 
 selon les indexes utilisés. L'utilisation d'un index sur un array contenant les termes de l'url parsé s'est avéré la méthode la plus efficace.
 Ces indexes ne sont pas encore automatiquement crées dans le code.
-<img src="images/performances_index_20M.png" width="500"/>
+<img src="images/performances_index_20M.png" width="700"/>
 
 
 Une deuxième collection est mise à jour en parralèle pour rajouter les nouveaux sitemaps et mettre à jour ceux qui ont été scrappés.
