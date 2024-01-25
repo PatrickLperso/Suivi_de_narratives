@@ -50,12 +50,10 @@ Or dans ces fichiers se trouvent régulièrement des urls qui sont les index du 
 Notre scrapper va récursivement récupérées ces sitemaps et trouver les liens html contenus dans ces fichiers.
 Toutes ces données sont ensuite mises dans la base de donnée MongoDB.
 
-Voici un exemple avec Exemple pour https://www.lemonde.fr/:
-
+Voici un exemple avec  https://www.lemonde.fr/:
 Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt
 
 Il contient des sitemaps :
-
 ```xml
 Sitemap: https://www.lemonde.fr/sitemap_news.xml
 Sitemap: https://www.lemonde.fr/sitemap_index.xml
