@@ -5,5 +5,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
-COPY assets .
+COPY assets/app.css ./assets/app.css
+RUN ls -la assets
 CMD [ "python", "app.py"]
