@@ -61,7 +61,7 @@ Sitemap: https://www.lemonde.fr/en/sitemap_news.xml
 Sitemap: https://www.lemonde.fr/en/sitemap_index.xml
 ```
 
-On y découvre en poursuivant le parcours les article du journal LeMonde :
+On y découvre en poursuivant le parcours des sitemaps les articles du journal LeMonde :
 ```xml
 <url>
     <loc>
