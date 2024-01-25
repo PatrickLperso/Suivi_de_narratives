@@ -46,9 +46,9 @@ Un DashBoard est disponible sur l'addresse : http://localhost:8000/
 ### Choix d'architecture
 
 Les données scrappées sont stockées dans une base de données MongoDB. Pour être plus précis, l'ensemble des données est stockée dans un volume docker.
-Ces données ne sont donc pas perdues si la machine s'éteint car elles sont stockées sur la machine. C'est aussi le cas pour les données concerant Prometheus et grafana.
-Il est donc possible d'arrêter le scrapping et le reprendre plus tard.
-Enfin, une api flask, prometheus et grafana sont déployés pour monitorer le scrapper.
+Ces données ne sont donc pas perdues si la machine s'éteint car elles sont stockées sur la machine. C'est aussi le cas pour les données concernant Prometheus et grafana.
+Il est donc possible d'arrêter le crawling et le reprendre plus tard.
+Enfin, une api flask, prometheus et grafana sont déployés pour monitorer le crawler.
 
 ### Fonctionnement du scrapper
 
@@ -61,7 +61,7 @@ Toutes ces données sont ensuite mises dans la base de donnée MongoDB.
 Nous allons montrer le fonctionnement du crawler avec le site lemonde.fr.
 Note : Il n'a pas été crawler.
 
-Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt__
+Le robots.txt se trouve à l'addresse : https://www.lemonde.fr/robots.txt
 Il contient des sitemaps :
 ```xml
 Sitemap: https://www.lemonde.fr/sitemap_news.xml
@@ -113,8 +113,10 @@ Il en résulte de données enregistrées sous ce format dans une collection de l
 }
 ```
 Note : Le parsing des Urls sous cette forme permet de faire des index et donc des requêtes très rapides.
-Des tests très concluants avec 20 millions de données ont été efectués.
-Ces indexes ne sont pas encore automatiquement crées. 
+Des tests très concluants avec 20 millions de données ont été effectués : Une requête renvoyant 400000 à 500000 documents à été testé 
+selon les indexes utilisés. L'utilisation d'un index sur un array contenant les termes de l'url parsé s'est avéré la méthode la plus efficace.
+Ces indexes ne sont pas encore automatiquement crées dans le code.
+<img src="images/performances_index_20M.png" width="500"/>
 
 
 Une deuxième collection est mise à jour en parralèle pour rajouter les nouveaux sitemaps et mettre à jour ceux qui ont été scrappés.
@@ -141,11 +143,11 @@ Les données sont sous cette forme :
 ### Liste des fichiers
 
 /api_flask contient l'api flask utile pour prometheus
-/dash_app contient le dashboard de DataViz
+/dash_app contient le dashboard de DataViz 
 /grafana contient les fichiers de configuation pour grafana 
 /scrappers contient les scrappers
 
-### Commandes utiles
+### Commandes utiles 
 
 Arrêter les services
 ```bash
