@@ -1,5 +1,5 @@
 # WebScrapping
-### Le Projet
+## Le Projet
 
 Le projet consiste à développer un outil permettant de monitorer ce qu'il se dit à propos d'un sujet.
 On peut ainsi rechercher le terme climat et voir à quel moment dans les médias la question du climat a été abordé, 
@@ -12,7 +12,7 @@ d'Elon Musk avec twitter et ce depuis son rachat dès avril 2022. On remarque d'
 <img src="images/elon_musk.png" width="1000"/>
 
 
-### Lancer l'application
+## Lancer l'application
 
 L'application développée est en réalité plusieurs services fonctionnant dans des dockers.
 Cette option permet une conteneurisation et une gestion des dépendances.
@@ -22,7 +22,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 ``` 
 L'ensemble des installations et des services va être automatiquement lancé. 
 
-### Définir le nombre de cycles de crawling 
+## Définir le nombre de cycles de crawling 
 
 Le nombre de cycle de crawling est actuellement à 10 mais il peut-être modifié dans le fichier docker-compose.prod.yml.
 Il est possible de mettre 0 si on souhaite uniquement regarder les logs grafana ainsi que le dashboard.
@@ -38,29 +38,34 @@ Il est possible de mettre 0 si on souhaite uniquement regarder les logs grafana 
 ```
 Attention, si le nombre de cycles de scrapping défini est important (plus de 25), il faudra penser à indexer la base de données Mongodb pour pouvoir faire des requêtes dans le dashboard. Enfin, le crawler pourra prendre du temps avant de finir l'ensemble de ces cycles.
 
-### DashBoard & Grafana
+## DashBoard & Grafana
 
 Grafana est accessible pour monitorer le scrapper sur l'addresse :  http://localhost:3000
+
 <img src="images/grafana.png" width="900"/>
 
 Un DashBoard est disponible sur l'addresse : http://localhost:8000/
+
 <img src="images/dashboard.png" width="1000"/>
 
-### Choix d'architecture
+## Choix d'architecture
 
 Les données scrappées sont stockées dans une base de données MongoDB. Pour être plus précis, l'ensemble des données est stockée dans un volume docker.
 Ces données ne sont donc pas perdues si la machine s'éteint car elles sont stockées sur la machine. C'est aussi le cas pour les données concernant Prometheus et grafana.
 Il est donc possible d'arrêter le crawling et le reprendre plus tard.
 Enfin, une api flask, prometheus et grafana sont déployés pour monitorer le crawler.
 
-### Fonctionnement du scrapper
+## Fonctionnement du scrapper
 
 Le crawler scanne un liste de médias américains en allant regarder ce qui se trouve dans chaque robots.txt.
-Or dans ces fichiers se trouvent régulièrement des urls qui sont les index du site (des urls conteant sitemap).
-Notre crawler va récursivement récupérées ces sitemaps et trouver les liens html contenus dans ces fichiers.
-Toutes ces données sont ensuite mises dans la base de donnée MongoDB.
+Or dans ces fichiers se trouvent régulièrement des urls qui sont les index du site (des urls contenant sitemap).
 
-### Exemple avec lemonde.fr
+Notre crawler va récursivement récupérer ces sitemaps et trouver les liens html contenus dans ces fichiers. Les sitemaps sont scrappés par batch/cycle, autrement dit pendant un cycle, 1 sitemaps par site est scrappé de manière asynchrone. Autrement dit à chaque cycle, plusieurs centaines/dizaines de requêtes sont envoyées en même temps (de manière concurrente) et sont traités lorsqu'elles sont reçues. Mais à aucun moment, un site ne reçoit plusieurs requêtes concurrentes.
+
+Toutes ces données sont ensuite mises dans la base de donnée MongoDB (les nouveaux sitemaps et les articles detectés).
+Enfin, les sitemaps.xml qui viennent d'être scrappés voient leur attribut has_been_scrapped définit à true pour ne plus les scrapper dans le futur.
+
+## Exemple avec LeMonde.fr
 Nous allons montrer le fonctionnement du crawler avec le site lemonde.fr.
 Note : Il n'a pas été crawler.
 
@@ -73,7 +78,7 @@ Sitemap: https://www.lemonde.fr/en/sitemap_news.xml
 Sitemap: https://www.lemonde.fr/en/sitemap_index.xml
 ```
 
-On y découvre en poursuivant le parcours des sitemaps les articles du journal LeMonde :
+On découvre en poursuivant le parcours des sitemaps, des articles du journal Le Monde :
 ```xml
 <url>
     <loc>
@@ -102,27 +107,32 @@ On y découvre en poursuivant le parcours des sitemaps les articles du journal L
 ```
 
 Les données de date de publication, de l'url sont récupérées, les mots dans l'url sont parsés.
-Il en résulte de données enregistrées sous ce format dans une collection de la base de données mongoDB.
+Il en résulte des données enregistrées sous ce format dans une collection de la base de données MongoDB.
 ```json
 {
     "url": "https://www.lemonde.fr/international/article/2024/01/25/guerre-en-ukraine-questions-apres-le-crash-d-un-avion-russe_6212827_3210.html",
     "mots_in_url" : ["international","2024", "01", "25", "guerre", "ukraine", "questions", "apres", "crash", "avion", "russe", "6212827", "3210"], 
     "media_name" : "lemonde.fr",
     "id_media" : 1245,
-    "has_been_scrapped" : true,
+    "has_been_scrapped" : false,
     "xml_source" : "https://www.lemonde.fr/sitemap_news.xml",
     "date": "2024-01-25T04:30:07+01:00",
     "text": null,
 }
 ```
-Note : Le parsing des Urls sous cette forme permet de faire des index et donc des requêtes très rapides.
-Des tests très concluants avec 20 millions de données ont été effectués : Une requête renvoyant 400000 à 500000 documents à été testé 
-selon les indexes utilisés. L'utilisation d'un index sur un array contenant les termes de l'url parsé s'est avéré la méthode la plus efficace.
+
+### Parsing des Urls et Index 
+
+Le parsing des urls sous la forme d'un array permet de faire des index et donc des requêtes très rapides. Uniquement, les mots pertinents sont récupérés grâce à des stopwords.
+
+Des tests très concluants avec 20 millions de données ont été effectués : Une requête renvoyant 400K à 500K documents à été testé 
+selon les index utilisés. L'utilisation d'un index sur un array contenant les termes de l'url parsé s'est avéré la méthode la plus efficace.
 Ces indexes ne sont pas encore automatiquement crées dans le code.
+
 <img src="images/performances_index_20M.png" width="700"/>
 
 
-Une deuxième collection est mise à jour en parralèle pour rajouter les nouveaux sitemaps et mettre à jour ceux qui ont été scrappés.
+Une deuxième collection est mise à jour en parallèle pour rajouter les nouveaux sitemaps découverts et mettre à jour ceux qui ont été scrappés pour ne pas repasser par les mêmes. Il est à noter qu'aucune contrainte d'unicité n'est implantée, pour autant le nombre de doublons ne semble pa significatif.
 Les informations contenues dans le robot.txt y sont aussi stockées.
 Les données sont sous cette forme : 
 ```json
@@ -143,14 +153,26 @@ Les données sont sous cette forme :
 }
 ```
 
-### Liste des fichiers
+### Variété, exhaustivité et qualité des données
 
-/api_flask contient l'api flask utile pour prometheus
-/dash_app contient le dashboard de DataViz 
-/grafana contient les fichiers de configuation pour grafana 
-/scrappers contient les scrappers
+Si le but initial était de pouvoir fournir une analyse multi-pays, le projet s'est rabattu sur un pays uniquement (les Etats-Unis mais il aurait été possible d'en prendre un autre) pour des raisons de latence et computationelles.
 
-### Commandes utiles 
+La plupart des sites de médias crawlés sont régulièrement peu à jour et ne contiennent pas toujours des sitemaps. Les grands médias sont plus fournis. Une autre difficulté concerne les sites qui générent un sitemap.xml par jour, ce qui rend très difficile de scrapper l'ensemble des articles. Sur 5 ans, cela réprésenterait, 5*360=1500 et donc autant de cycles de crawling à effectuer. 
+
+La donnée de date de publication varie de qualité selon les sites, elle n'est pas toujours présente et parfois elle représente la date de modification. Cela se voit parfois quand on apercoit de gros pics dans le DashBoard : Cela signifie qu'une mise à jour à eu lieue sur un site et donc plusieurs milliers articles ont eu leur attribut "lastmod" (last modification) modifié dans les sitemaps. Or ce champ est régulièrement utilisé pour renseigner la date de publication en l'absence du champ "news:publication". On peut voir ces champs dans l'exemple avec LeMonde.fr
+
+Nous avons préféré être large et ensuite filtrer.
+
+## Liste des fichiers
+
+- /api_flask contient l'api flask utile pour prometheus 
+- /dash_app contient le dashboard de DataViz 
+- /grafana contient les fichiers de configuration pour grafana 
+- /scrappers contient les scrappers
+    - /scrappers/crawling_async.py contient le code essentiel pour crawler récursivement, insérer et mettre à jour la base de données MongoDB
+    - /scrappers/Medias_scrapping.py contient un code utilisé pour se constituer une base de données de médias grâce au site https://www.abyznewslinks.com/allco.htm
+
+## Commandes utiles 
 
 Arrêter les services
 ```bash
@@ -162,7 +184,12 @@ Voir l'état des services
 docker-compose -f docker-compose.prod.yml ps
 ```
 
-Voir les logs du scrapper
+Voir les logs du crawler
 ```bash
 docker-compose -f docker-compose.prod.yml logs scrapper --follow
+```
+
+Voir les volumes docker
+```bash
+docker volume ls | grep webscrapping
 ```
