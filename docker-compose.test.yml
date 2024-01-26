@@ -9,9 +9,20 @@ services:
       - prometheus
     ports:
       - 5000:5000
-    container_name: app_flask_for_prometheus
+    container_name: api_flask
     networks:
       scrapper:
+
+  dashboard:
+    build:
+      context: ./dash_app
+      dockerfile: Dockerfile
+    container_name: dashboard
+    ports:
+      - 8000:8000
+    networks:
+      scrapper:
+
 
   prometheus:
     image: prom/prometheus:latest
@@ -30,7 +41,7 @@ services:
       context: ./scrappers
       dockerfile: Dockerfile
     container_name: scrapper
-    command : [ "python", "crawling_async.py", "mongodb", "5" , "--crawling_robots=0"]
+    command : [ "python", "crawling_async.py", "mongodb", "0" , "--crawling_robots=0"]
     networks:
       scrapper:
       
