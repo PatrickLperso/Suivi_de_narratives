@@ -1,7 +1,7 @@
 # WebScrapping
 ## Le Projet
 
-Petit point de vocabulaire : Les termes scrapper et crawler seront utilisés, dans notre cas nous avions bien développé un crawler, c'est-à-dire un programme qui récupére des urls pour les indexer. Les deux termes seront utiliser mais désigne la même chose.
+Petit point de vocabulaire : Les termes scrapper et crawler seront utilisés, dans notre cas nous avions bien développé un crawler, c'est-à-dire un programme qui récupére des urls pour les indexer. Les deux termes seront utilisés mais désignent la même chose.
 
 Le projet consiste à développer un outil permettant de monitorer ce qu'il se dit à propos d'un sujet.
 On peut ainsi rechercher le terme climat et voir à quel moment dans les médias la question du climat a été abordé, 
