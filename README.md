@@ -1,5 +1,5 @@
-# WebScrapping
-## Le Projet
+# Projet de WebScrapping
+## Sujet du Projet : Monitorer les médias
 
 Petit point de vocabulaire : Les termes scrapper et crawler seront utilisés, dans notre cas nous avions bien développé un crawler, c'est-à-dire un programme qui récupére des urls pour les indexer. Les deux termes seront utilisés mais désignent la même chose.
 
@@ -56,6 +56,8 @@ Les données scrappées sont stockées dans une base de données MongoDB. Pour �
 Ces données ne sont donc pas perdues si la machine s'éteint car elles sont stockées sur la machine. C'est aussi le cas pour les données concernant Prometheus et grafana.
 Il est donc possible d'arrêter le crawling et le reprendre plus tard.
 Enfin, une api flask, prometheus et grafana sont déployés pour monitorer le crawler.
+
+<img src="images/slide_presentation.png" width="1000"/>
 
 ## Fonctionnement du scrapper
 
