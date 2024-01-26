@@ -37,7 +37,7 @@ services:
       context: ./scrappers
       dockerfile: Dockerfile
     container_name: scrapper
-    command : [ "python", "crawling_async.py", "mongodb", "0" , "--crawling_robots=0"]
+    command : [ "python", "crawling_async.py", "mongodb", "5" , "--crawling_robots=0"]
     networks:
       scrapper:
       

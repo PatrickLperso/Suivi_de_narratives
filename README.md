@@ -5,23 +5,26 @@ Le projet consiste à développer un outil permettant de monitorer ce qu'il se d
 On peut ainsi rechercher le terme climat et voir à quel moment dans les médias la question du climat a été abordé, 
 quels ont été les termes employés, qui en a parlé le plus, etc ...
 
-Etant donné le caractère assez universel de cette capacité, il est possible de faire des requêtes sur absolument n'importe quel sujet.
+Etant donné le caractère universel de cette capacité, il est possible de faire des requêtes sur absolument n'importe quel sujet.
+
+Voici un exemple avec Elon Musk, on remarque une très forte association 
+d'Elon Musk avec twitter et ce depuis son rachat dès avril 2022. On remarque d'ailleurs que Tesla et SpaceX sont peu présents par rapport à Twitter.
 <img src="images/elon_musk.png" width="1000"/>
 
-L'application développée est en réalité plusieurs services fonctionnant dans des dockers.
-Cette option permet une conteneurisation absolue et une gestion des dépendances.
 
-### Lancer le projet
+### Lancer l'application
+
+L'application développée est en réalité plusieurs services fonctionnant dans des dockers.
+Cette option permet une conteneurisation et une gestion des dépendances.
 
 ```bash
 docker-compose -f docker-compose.prod.yml up -d --build
 ``` 
-L'ensemble des installations va être automatiquement lancé. Enfin, le scrapper ainsi que l'ensemble des services seront lancés.
-
+L'ensemble des installations et des services va être automatiquement lancé. 
 
 ### Définir le nombre de cycles de crawling 
 
-Le nombre de cycle de crawling est actuellment à 10 mais il peut-être modifié dans le fichier docker-compose.prod.yml.
+Le nombre de cycle de crawling est actuellement à 10 mais il peut-être modifié dans le fichier docker-compose.prod.yml.
 Il est possible de mettre 0 si on souhaite uniquement regarder les logs grafana ainsi que le dashboard.
 ```yaml
   scrapper:
@@ -33,7 +36,7 @@ Il est possible de mettre 0 si on souhaite uniquement regarder les logs grafana 
     networks:
       scrapper:
 ```
-Attention, si le nombre de cycles de scrapping définit est important, il faudra penser à indexer la base de données Mongodb pour pouvoir faire des requêtes dans le dashboard. Enfin, le crawler pourra prendre du temps avant de finir l'ensemble de ces cycles.
+Attention, si le nombre de cycles de scrapping défini est important (plus de 25), il faudra penser à indexer la base de données Mongodb pour pouvoir faire des requêtes dans le dashboard. Enfin, le crawler pourra prendre du temps avant de finir l'ensemble de ces cycles.
 
 ### DashBoard & Grafana
 
