@@ -171,6 +171,7 @@ Nous avons préféré être large et ensuite filtrer.
 - /scrappers contient les scrappers
     - /scrappers/crawling_async.py contient le code essentiel pour crawler récursivement, insérer et mettre à jour la base de données MongoDB
     - /scrappers/Medias_scrapping.py contient un code utilisé pour se constituer une base de données de médias grâce au site https://www.abyznewslinks.com/allco.htm
+- /Notebooks contient des notebooks de test 
 
 ## Commandes utiles 
 
@@ -192,4 +193,14 @@ docker-compose -f docker-compose.prod.yml logs scrapper --follow
 Voir les volumes docker
 ```bash
 docker volume ls | grep webscrapping
+```
+
+Lancer un MongoDB de test avec les données scrappées sur le localhost
+```bash
+docker run -d -p 27017:27017 -v webscrapping_mongodb-data:/data/db --name mongo_test mongo:latest
+```
+
+Supprimer ce même conteneur
+```bash
+docker ps | grep mongo_test | awk '{print $1}' | xargs docker stop  | xargs docker rm
 ```
