@@ -17,8 +17,8 @@ collection_htmls="htmls"
 
 def match_keywords(client, database, collection_htmls, keywords, keywords_to_ignore, not_all_keywords_switch):
 
-    list_match=list(filter(lambda  x:len(x), keywords.split(" ")))#"france"#"climat"#"cop.?28"
-
+    list_match=list(filter(lambda  x:len(x), keywords.split(" ")))
+    
     if not keywords_to_ignore:
         list_no_match=[]
     else:
@@ -89,14 +89,6 @@ def match_keywords(client, database, collection_htmls, keywords, keywords_to_ign
             )
 
 
-#df_urls_match_v1=match_document_v1(client, database, collection_htmls, list_match, all=all)
-
-
-
-
-# Incorporate data
-df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder2007.csv')
-
 # Initialize the app - incorporate a Dash Bootstrap theme
 external_stylesheets = [dbc.themes.CERULEAN]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
@@ -132,7 +124,7 @@ app.layout = dbc.Container([
             dbc.Col([
                         html.Div([
                                     dbc.Textarea(id="Keywords", size="lg", placeholder="Keywords", 
-                                                 value='climate energy',),
+                                                 value='climate',),
                                 ], className="center_horinzontal")
                             ], align="center"),
 

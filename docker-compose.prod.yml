@@ -61,7 +61,6 @@ services:
     command : --wiredTigerCacheSizeGB=4
     volumes:
       - mongodb-data:/data/db
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       scrapper:
   

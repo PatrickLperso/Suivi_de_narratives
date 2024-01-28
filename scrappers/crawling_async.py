@@ -71,7 +71,7 @@ collection : htmls
 
 class MongoDB_scrap_async():
 
-    def __init__(self, host_mongo, port_forwarding=27017, test=True):
+    def __init__(self, host_mongo, port_forwarding, crawling_robots, n_cycles, test=True):
         self.client=MongoClient(host_mongo, port=port_forwarding)
         self.ping_MongoDB()
         
@@ -81,6 +81,8 @@ class MongoDB_scrap_async():
         self.database="scrapping"
         self.collection_sitemaps="sitemaps"
         self.collection_htmls="htmls"
+        self.crawling_robots=crawling_robots
+        self.n_cycles=n_cycles
 
         # utilisation de set pour la perfomance + uniquement les elements de plus de 3 caractères les autres sont supprimés
         self.stopwords=set(filter(lambda x:len(x)>=3 and "'" not in x, set(stopwords.words('english')).union(set(["jpg", "wp", "content", "uploads", "htm",
@@ -89,7 +91,7 @@ class MongoDB_scrap_async():
 
 
         self.show_all(self.database, self.collection_sitemaps)
-        print(os.getcwd())
+
         if not self.test_collection_in_database_exists(self.database, self.collection_sitemaps, print_arg=False):
             self.insert_data(self.database, self.collection_sitemaps,
                              MongoDB_scrap_async.create_dictio_data_from_csv("medias_per_countries.csv", test=test))
@@ -275,23 +277,6 @@ class MongoDB_scrap_async():
                             date_tag="lastmod"
                             break
                     
-                
-
-                #Récupération des urls + mise en forme de données textuelles avec la date si disponible
-                """
-                url=list(map(lambda x:{"url": x.get_text(),
-                                    "mots_in_url":list(filter(lambda x:len(x)>=3 and x not in self.stopwords,urllib.parse.urlparse(x.get_text().lower())\
-                                                            .path.replace("&", "/").replace("#", "/").replace(",", "/")\
-                                                            .replace("+", "/").replace("_", "/").replace("-", "/").replace("%", "/")\
-                                                            .replace(".", "/").split("/"))),
-                                    "has_been_scrapped" : False,
-                                    "id_media": dict_url_depth["id_media"], 
-                                    "media_name" : dict_url_depth["media_name"],
-                                    "is_responding": True, 
-                                    "xml_source" : dict_url_depth["url"] , 
-                                    "text" : None }, soup.select("url loc")))
-                """
-
                 if date_tag:
                     url=list(map(lambda x:{"url": x[0],
                                                 "mots_in_url":list(filter(lambda mot:len(mot)>=3  and mot not in self.stopwords,urllib.parse.urlparse(x[0].lower())\
@@ -303,7 +288,7 @@ class MongoDB_scrap_async():
                                                 "media_name" : dict_url_depth["media_name"],
                                                 "is_responding": True, 
                                                 "xml_source" : dict_url_depth["url"] , 
-                                                "date_day":parser.parse(x[1]).replace(hour=0, minute=0, second=0, microsecond=0) if x[1] else None, #datetime.datetime.strptime(parser.parse(x[1]).strftime("%Y-%m-%d"), "%Y-%m-%d") if x[1] else None,
+                                                "date_day":parser.parse(x[1]).replace(hour=0, minute=0, second=0, microsecond=0) if x[1] else None, 
                                                 "date":parser.parse(x[1]).replace(microsecond=0).replace(second=0) if x[1] else None,
                                                 "text" : None }, 
                                                 list(map(lambda x:[x.select("loc")[0].get_text(), 
@@ -572,7 +557,14 @@ class MongoDB_scrap_async():
         url_waybackmachine+="&showSkipCount=true&output=json"
         url_waybackmachine+="&filter=original:{}".format(regex)
 
-        return url_waybackmachine
+        return 
+    
+    def index_exists(self):
+        return 'mots_in_url' in self.client[self.database][self.collection_htmls].index_information().keys()
+    
+    def creation_index(self):
+        print("=============== création de l'index sur les mots parsés ============")
+        self.client[self.database][self.collection_htmls].create_index('mots_in_url')
 
     
     def deep_search_batch_sitemaps(self):
@@ -699,13 +691,32 @@ class MongoDB_scrap_async():
 
         stop = perf_counter()
         print("Temps des insertions et mise à jours :{}".format(stop-start))
+        #print("\nNb pages html :{}".format(self.client[self.database][self.collection_htmls].count_documents({})))
 
-        print("\nNb pages html :{}".format(self.client[self.database][self.collection_htmls].count_documents({})))
-        """
-        print("Nb pages parlant du climat :{}".format(sum(list(map(lambda x:x["count"], self.list_url_climat(list_match="climat", aggregate=True))))))
-        print("Nb pages parlant de trump :{}".format(sum(list(map(lambda x:x["count"], self.list_url_climat(list_match="trump", aggregate=True))))))
-        print("Nb pages parlant de la cop28 :{}".format(sum(list(map(lambda x:x["count"], self.list_url_climat(list_match="cop.?28", aggregate=True))))))
-        """
+
+    def crawling_procedure(self):
+
+        if self.sitemap_is_empty():
+            self.scan_robots_txt()
+        else:
+            if self.crawling_robots:
+                anwser=input("Voulez-vous relancer le scrapping des robots.txt?[Y/n]")
+                if anwser=="Y":
+                    self.scan_robots_txt() 
+                else:
+                    pass
+        
+        if not self.index_exists():
+            self.creation_index()
+
+        start = perf_counter()
+        for k in range(self.n_cycles):
+            sleep(3)
+            print("\n=========iteration: {}/{}========".format(k, self.n_cycles))
+            self.deep_search_batch_sitemaps()
+
+        stop = perf_counter()
+        print(stop-start)
 
             
         
@@ -715,49 +726,24 @@ if __name__=="__main__":
     #n_cycles=50  #nombre de cycles de crawling
     #crawling_robots=True #initlisation avec le crawling des robots.txt
 
-    """
-    test=True
-
-    if test:
-        host_name_mongo="localhost"
-        n_cycles=10
-        crawling_robots=0
-        print("========== Ceci est une version de test attention ===========")
-        anwser=input("Voulez-vous continuer [Y/n]?")
-        if anwser=="Y":
-            pass
-        else:
-            raise Exception("Arrêt de la version de test")  
-
-    else"""
-
     arguments = docopt(__doc__)
+
     host_name_mongo=arguments["<host_name_mongo>"]
     n_cycles=int(arguments["<n_cycles>"])
     crawling_robots=int(arguments["--crawling_robots"]) 
 
-    instance_Mongo=MongoDB_scrap_async(host_name_mongo, port_forwarding=27017, test=True)
+    instance_Mongo=MongoDB_scrap_async(host_name_mongo, port_forwarding=27017, crawling_robots=crawling_robots, n_cycles=n_cycles, test=True)
+    instance_Mongo.crawling_procedure()
 
-    if instance_Mongo.sitemap_is_empty():
-        instance_Mongo.scan_robots_txt()
-    else:
-        if crawling_robots:
-            anwser=input("Voulez-vous relancer le scrapping des robots.txt?[Y/n]")
-            if anwser=="Y":
-                instance_Mongo.scan_robots_txt() 
-            else:
-                pass
         
-    start = perf_counter()
-    for k in range(n_cycles):
-        sleep(3)
-        print("\n=========iteration: {}/{}========".format(k, n_cycles))
-        instance_Mongo.deep_search_batch_sitemaps()
 
-    stop = perf_counter()
-    print(stop-start)
     
+"""
 
+Prochaine évolution : Multiprocessing & concurrent (uniquement concurrent pour l'instant )
+https://www.dataleadsfuture.com/aiomultiprocess-super-easy-integrate-multiprocessing-asyncio-in-python/
+
+"""
 
 
     
