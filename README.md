@@ -137,7 +137,8 @@ Le parsing des urls sous la forme d'un array permet de faire des index et donc d
 
 Des tests très concluants avec 20 millions de données ont été effectués : Une requête renvoyant 400K à 500K documents à été testé 
 selon les index utilisés. L'utilisation d'un index sur un array contenant les termes de l'url parsé s'est avéré la méthode la plus efficace.
-Ces indexes ne sont pas encore automatiquement crées dans le code.
+
+Un index sur les termes de l'url parsés est actuellement implémenté.
 
 <img src="images/performances_index_20M.png" width="700"/>
 
