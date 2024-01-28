@@ -6,7 +6,7 @@ from pymongo import MongoClient
 from dash_holoniq_wordcloud import DashWordcloud
 import plotly.graph_objects as go
 import numpy as np
-
+import dash_daq as daq
 
 client=MongoClient('mongo', port=27017)
 performance={}
@@ -114,9 +114,16 @@ app.layout = dbc.Container([
         dbc.Row([
             dbc.Col([
                     html.Div([
+                        daq.LEDDisplay(id="number_resultst", size=40),
+                    ], className="center_horinzontal")
+            ], width={"size": 3}, align="center"),
+
+
+            dbc.Col([
+                    html.Div([
                         dcc.Graph(id="time_evolution"),
                     ], className="center_horinzontal")
-            ], width={"size": 8, "offset":2}, align="center"),
+            ], width={"size": 6}, align="center"),
         ]),
 
         dbc.Row([
@@ -244,6 +251,7 @@ def graph_top_moment(df_data):
     Output(component_id='WordCloud_div', component_property='children'),
     Output(component_id='medias_frequency', component_property='figure'),
     Output(component_id='time_evolution', component_property='figure'),
+    Output(component_id='number_resultst', component_property='value'),
     Input(component_id='button_requete', component_property='n_clicks'),
     Input(component_id='Keywords', component_property='value'),
     Input(component_id='Keywords_to_ignore', component_property='value'),
@@ -264,7 +272,7 @@ def update_wordcloud(click, keywords, keywords_to_ignore, not_all_keywords_switc
 
         
         most_frequent_moment=graph_top_moment(df_data)
-        return wordcloud, most_frequent_medias, most_frequent_moment
+        return wordcloud, most_frequent_medias, most_frequent_moment, len(df_data)
     else:
         return no_update
 
