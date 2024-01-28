@@ -22,6 +22,12 @@ Cette option permet une conteneurisation et une gestion des dépendances.
 ```bash
 docker-compose -f docker-compose.prod.yml up -d --build
 ``` 
+
+ou
+
+```bash
+make run_build_prod
+``` 
 L'ensemble des installations et des services va être automatiquement lancé. 
 
 ## Définir le nombre de cycles de crawling 
@@ -181,7 +187,7 @@ Nous avons préféré être large et ensuite filtrer.
 
 Arrêter les services
 ```bash
-docker-compose -f docker-compose.prod.yml down
+make down_prod
 ```
 
 Voir l'état des services
@@ -191,7 +197,7 @@ docker-compose -f docker-compose.prod.yml ps
 
 Voir les logs du crawler
 ```bash
-docker-compose -f docker-compose.prod.yml logs scrapper --follow
+make logs_scrapper
 ```
 
 Voir les volumes docker
@@ -201,10 +207,10 @@ docker volume ls | grep webscrapping
 
 Lancer un MongoDB de test avec les données scrappées sur le localhost
 ```bash
-docker run -d -p 27017:27017 -v webscrapping_mongodb-data:/data/db --name mongo_test mongo:latest
+make mongo_localhost
 ```
 
 Supprimer ce même conteneur
 ```bash
-docker ps | grep mongo_test | awk '{print $1}' | xargs docker stop  | xargs docker rm
+make del_mongo_localhost
 ```
