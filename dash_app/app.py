@@ -7,15 +7,18 @@ from dash_holoniq_wordcloud import DashWordcloud
 import plotly.graph_objects as go
 import numpy as np
 import dash_daq as daq
+from datetime import datetime
+from dateutil import parser
 
-client=MongoClient('mongo', port=27017)
+#==========attention si debug ============
+client=MongoClient('localhost', port=27017)
 performance={}
 database="scrapping"
 collection_sitemaps="sitemaps"
 collection_htmls="htmls"
 
 
-def match_keywords(client, database, collection_htmls, keywords, keywords_to_ignore, not_all_keywords_switch):
+def match_keywords(client, database, collection_htmls, keywords, keywords_to_ignore, not_all_keywords_switch, date_start=None, date_end=None):
 
     list_match=list(filter(lambda  x:len(x), keywords.split(" ")))
     
@@ -24,49 +27,18 @@ def match_keywords(client, database, collection_htmls, keywords, keywords_to_ign
     else:
         list_no_match=list(filter(lambda  x:len(x), keywords_to_ignore.split(" ")))
 
-
-    if not not_all_keywords_switch:
-        print("all element in list_match")
-        return pd.DataFrame(list(client[database][collection_htmls].aggregate(
-                                                        [
-                                                            {
-                                                                "$match" : 
-                                                                {
-                                                                    "$and":
-                                                                        [
-                                                                        {"mots_in_url": { "$all":  list_match }},
-                                                                        {"mots_in_url": { "$nin":  list_no_match }}
-                                                                        ]
-
-                                                                },
-                                                            },
-                                                            { "$project": 
-                                                                    { 
-                                                                        "_id":0,
-                                                                        "id_media": 1, 
-                                                                        "media_name": 1, 
-                                                                        "url" : 1, 
-                                                                        "mots_in_url" :1,
-                                                                        "xml_source" :1,
-                                                                        "date_day":1,
-                                                                        "date":1
-                                                                    }
-                                                            }
-                                                        ]
-                                                )
-                                        )
-        )
-    else:
-        print("one element atleast in list_match")
-        return  pd.DataFrame(list(client[database][collection_htmls].aggregate(
+    if not date_start:
+        if not not_all_keywords_switch:
+            print("all element in list_match")
+            return pd.DataFrame(list(client[database][collection_htmls].aggregate(
                                                             [
                                                                 {
                                                                     "$match" : 
                                                                     {
                                                                         "$and":
                                                                             [
-                                                                            {"mots_in_url": { "$in":  list_match }},
-                                                                            { "mots_in_url": { "$nin":  list_no_match }}
+                                                                            {"mots_in_url": { "$all":  list_match }},
+                                                                            {"mots_in_url": { "$nin":  list_no_match }}
                                                                             ]
 
                                                                     },
@@ -87,6 +59,103 @@ def match_keywords(client, database, collection_htmls, keywords, keywords_to_ign
                                                     )
                                             )
             )
+        else:
+            print("one element atleast in list_match")
+            return  pd.DataFrame(list(client[database][collection_htmls].aggregate(
+                                                                [
+                                                                    {
+                                                                        "$match" : 
+                                                                        {
+                                                                            "$and":
+                                                                                [
+                                                                                {"mots_in_url": { "$in":  list_match }},
+                                                                                { "mots_in_url": { "$nin":  list_no_match }},
+                                                                                { "date_day": { "$gte":  date_start , "$lt" :date_end }}
+                                                                                ]
+
+                                                                        },
+                                                                    },
+                                                                    { "$project": 
+                                                                            { 
+                                                                                "_id":0,
+                                                                                "id_media": 1, 
+                                                                                "media_name": 1, 
+                                                                                "url" : 1, 
+                                                                                "mots_in_url" :1,
+                                                                                "xml_source" :1,
+                                                                                "date_day":1,
+                                                                                "date":1
+                                                                            }
+                                                                    }
+                                                                ]
+                                                        )
+                                                )
+                )
+    else:
+        if not not_all_keywords_switch:
+            print("all element in list_match")
+            return pd.DataFrame(list(client[database][collection_htmls].aggregate(
+                                                            [
+                                                                {
+                                                                    "$match" : 
+                                                                    {
+                                                                        "$and":
+                                                                            [
+                                                                            {"mots_in_url": { "$all":  list_match }},
+                                                                            {"mots_in_url": { "$nin":  list_no_match }},
+                                                                            { "date_day": { "$gte":  date_start , "$lt" :date_end }}
+                                                                            ]
+
+                                                                    },
+                                                                },
+                                                                { "$project": 
+                                                                        { 
+                                                                            "_id":0,
+                                                                            "id_media": 1, 
+                                                                            "media_name": 1, 
+                                                                            "url" : 1, 
+                                                                            "mots_in_url" :1,
+                                                                            "xml_source" :1,
+                                                                            "date_day":1,
+                                                                            "date":1
+                                                                        }
+                                                                }
+                                                            ]
+                                                    )
+                                            )
+            )
+        else:
+            print("one element atleast in list_match")
+            return  pd.DataFrame(list(client[database][collection_htmls].aggregate(
+                                                                [
+                                                                    {
+                                                                        "$match" : 
+                                                                        {
+                                                                            "$and":
+                                                                                [
+                                                                                {"mots_in_url": { "$in":  list_match }},
+                                                                                { "mots_in_url": { "$nin":  list_no_match }}
+                                                                                ]
+
+                                                                        },
+                                                                    },
+                                                                    { "$project": 
+                                                                            { 
+                                                                                "_id":0,
+                                                                                "id_media": 1, 
+                                                                                "media_name": 1, 
+                                                                                "url" : 1, 
+                                                                                "mots_in_url" :1,
+                                                                                "xml_source" :1,
+                                                                                "date_day":1,
+                                                                                "date":1
+                                                                            }
+                                                                    }
+                                                                ]
+                                                        )
+                                                )
+                )
+   
 
 
 # Initialize the app - incorporate a Dash Bootstrap theme
@@ -206,7 +275,7 @@ def graph_top_medias(df_freq):
     return fig
 
 def graph_top_moment(df_data):
-
+    """
     liste_remove=['Christian Science Monitor',
                     'Op Ed News',
                     'Washington City Paper',
@@ -236,7 +305,7 @@ def graph_top_moment(df_data):
                     'Univision',
                     'The Conversation']
 
-    df_data=df_data.loc[~df_data.loc[:, "media_name"].isin(liste_remove), :]
+    df_data=df_data.loc[~df_data.loc[:, "media_name"].isin(liste_remove), :]"""
     df_freq=df_data.loc[:, "date_day"].dropna().value_counts().reset_index().sort_values(by="date_day")
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -255,17 +324,18 @@ def graph_top_moment(df_data):
     Input(component_id='button_requete', component_property='n_clicks'),
     Input(component_id='Keywords', component_property='value'),
     Input(component_id='Keywords_to_ignore', component_property='value'),
-    Input(component_id='not_all_keywords_switch', component_property='value')
+    Input(component_id='not_all_keywords_switch', component_property='value'),
+    Input(component_id='time_evolution', component_property='relayoutData')
 )
-def update_wordcloud(click, keywords, keywords_to_ignore, not_all_keywords_switch):
+def update_wordcloud(click, keywords, keywords_to_ignore, not_all_keywords_switch, relayoutData):
     print(not_all_keywords_switch)
     if not ctx.triggered_id or ctx.triggered_id=="button_requete":
+        print(1)
         df_data=match_keywords(client, database, collection_htmls, keywords, keywords_to_ignore, not_all_keywords_switch)
         n=200
         liste_parser=list(df_data.loc[:, "mots_in_url"].dropna())
         series_word_freq = pd.Series([ x for xs in liste_parser for x in xs if x not in keywords ]).value_counts().reset_index().iloc[:n]
         liste_frequence=list(map(lambda x,y:[x,y], series_word_freq.loc[:, "index"], series_word_freq.loc[:, "count"]))
-
         wordcloud=wordcloud_graph(liste_frequence)
         n_top=20
         most_frequent_medias=graph_top_medias(df_data.loc[:, "media_name"].dropna().value_counts().iloc[:n_top].reset_index())
@@ -273,8 +343,45 @@ def update_wordcloud(click, keywords, keywords_to_ignore, not_all_keywords_switc
         
         most_frequent_moment=graph_top_moment(df_data)
         return wordcloud, most_frequent_medias, most_frequent_moment, len(df_data)
+    elif ctx.triggered_id=="time_evolution":
+        if relayoutData and "xaxis.range[0]" in relayoutData:
+            print(relayoutData)
+            #date_start=datetime.strptime(relayoutData["xaxis.range[0]"], '%Y-%m-%d %H:%M:%S.%f')
+            #date_end=datetime.strptime(relayoutData["xaxis.range[1]"], '%Y-%m-%d %H:%M:%S.%f')
+            date_start=parser.parse(relayoutData["xaxis.range[0]"])
+            date_end=parser.parse(relayoutData["xaxis.range[1]"])
+            print(date_start, date_end)
+            df_data=match_keywords(client, database, collection_htmls, keywords, keywords_to_ignore, not_all_keywords_switch,date_start,date_end)
+            print(len(df_data))
+            n=200
+            liste_parser=list(df_data.loc[:, "mots_in_url"].dropna())
+            series_word_freq = pd.Series([ x for xs in liste_parser for x in xs if x not in keywords ]).value_counts().reset_index().iloc[:n]
+            liste_frequence=list(map(lambda x,y:[x,y], series_word_freq.loc[:, "index"], series_word_freq.loc[:, "count"]))
+            
+            wordcloud=wordcloud_graph(liste_frequence)
+            n_top=20
+            most_frequent_medias=graph_top_medias(df_data.loc[:, "media_name"].dropna().value_counts().iloc[:n_top].reset_index())
+
+            
+            most_frequent_moment=graph_top_moment(df_data)
+            return wordcloud, most_frequent_medias, most_frequent_moment, len(df_data)
+        elif relayoutData and "xaxis.autorange" in relayoutData:
+            print(relayoutData)
+            df_data=match_keywords(client, database, collection_htmls, keywords, keywords_to_ignore, not_all_keywords_switch)
+            n=200
+            liste_parser=list(df_data.loc[:, "mots_in_url"].dropna())
+            series_word_freq = pd.Series([ x for xs in liste_parser for x in xs if x not in keywords ]).value_counts().reset_index().iloc[:n]
+            liste_frequence=list(map(lambda x,y:[x,y], series_word_freq.loc[:, "index"], series_word_freq.loc[:, "count"]))
+            wordcloud=wordcloud_graph(liste_frequence)
+            n_top=20
+            most_frequent_medias=graph_top_medias(df_data.loc[:, "media_name"].dropna().value_counts().iloc[:n_top].reset_index())
+            most_frequent_moment=graph_top_moment(df_data)
+            return wordcloud, most_frequent_medias, most_frequent_moment, len(df_data)
+        else:
+            return no_update
     else:
         return no_update
+
 
 # Run the app
 if __name__ == '__main__':

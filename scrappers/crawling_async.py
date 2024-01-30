@@ -739,10 +739,8 @@ if __name__=="__main__":
 
     
 """
-
-Prochaine évolution : Multiprocessing & concurrent (uniquement concurrent pour l'instant )
+N'a pas été très concluant niveau performance
 https://www.dataleadsfuture.com/aiomultiprocess-super-easy-integrate-multiprocessing-asyncio-in-python/
-
 """
 
 
