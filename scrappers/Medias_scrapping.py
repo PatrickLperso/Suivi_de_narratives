@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Dec 20 02:35:57 2023
-
-@author: patrick
-"""
 
 import requests
 from bs4 import BeautifulSoup
