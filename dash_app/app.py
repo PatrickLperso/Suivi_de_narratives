@@ -11,7 +11,7 @@ from datetime import datetime
 from dateutil import parser
 
 #==========attention si debug ============
-client=MongoClient('localhost', port=27017)
+client=MongoClient('mongodb', port=27017)
 performance={}
 database="scrapping"
 collection_sitemaps="sitemaps"
