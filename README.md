@@ -1,7 +1,7 @@
 # Monitorer les Médias
 ## Visualiser les tendances et narratives
 
-<video src="images/video_dashboard.mp4" width="1000" controls></video>
+![](images/video_dashboard.gif)
 
 Le projet consiste à développer un outil permettant de monitorer ce qu'il se dit à propos d'un sujet.
 On peut ainsi rechercher le terme climat et voir à quel moment dans les médias la question du climat a été abordé, 
