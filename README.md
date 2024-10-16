@@ -1,18 +1,13 @@
-# Projet de WebScrapping
-## Sujet du Projet : Monitorer les médias
+# Monitorer les Médias
+## Visualiser les tendances et narratives
 
-Petit point de vocabulaire : Les termes scrapper et crawler seront utilisés, dans notre cas nous avions bien développé un crawler, c'est-à-dire un programme qui récupére des urls pour les indexer. Les deux termes seront utilisés mais désignent la même chose.
+<video src="images/video_dashboard.mp4" width="1000" controls></video>
 
 Le projet consiste à développer un outil permettant de monitorer ce qu'il se dit à propos d'un sujet.
 On peut ainsi rechercher le terme climat et voir à quel moment dans les médias la question du climat a été abordé, 
 quels ont été les termes employés, qui en a parlé le plus, etc ...
 
 Etant donné le caractère universel de cette capacité, il est possible de faire des requêtes sur absolument n'importe quel sujet.
-
-Voici un exemple avec Elon Musk, on remarque une très forte association 
-d'Elon Musk avec twitter et ce depuis son rachat dès avril 2022. On remarque d'ailleurs que Tesla et SpaceX sont peu présents par rapport à Twitter.
-<img src="images/elon_musk.png" width="1000"/>
-
 
 ## Lancer l'application
 
